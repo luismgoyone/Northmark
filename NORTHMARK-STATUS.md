@@ -7,11 +7,12 @@
 
 ## Current
 
-- **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
-- **Wave:** 5 — UI (Waves 0–4 done: full engine + data layer, 69 tests green)
-- **Resume pointer:** Through Task 1.13 (`useMarketData` hook) done — 75 tests green. Next is
-  the **last Phase-1 task: 1.14 (UI components + App wiring + qa browser check)** → **Phase 1
-  boundary**. Mockup: https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
+- **Phase:** 1 — Deterministic core ✅ **COMPLETE** (stopped at boundary for Luis' review)
+- **Wave:** 5 — UI done. All Phase-1 waves complete.
+- **Resume pointer:** **Phase 1 boundary — awaiting Luis.** 96 tests green, build passes.
+  Review the decision log + open flags below. Phase 2 (heuristic gates incl. level-ID) is
+  gated on Luis' go + the remaining checklist capture. Mockup:
+  https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -42,8 +43,8 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.11 — `twelveData.ts` data layer (engine; mocked-fetch tests green; LIVE-API check deferred → needs Luis' key)
 - [x] Task 1.12 — Designer spec + mockup (designer; product-lead APPROVED Tier-2; mockup published)
 - [x] Task 1.13 — `useMarketData` hook (frontend; only impure bridge; 75 tests)
-- [ ] Task 1.14 — UI components + App wiring (frontend + qa browser)
-- [ ] **Phase 1 boundary → STOP for Luis** (review decision log below)
+- [x] Task 1.14 — UI components + App wiring (frontend; honest WAIT state, no-BUY test; 96 tests; build green)
+- [x] **Phase 1 boundary → STOPPED for Luis** (review packet below) ← YOU ARE HERE
 
 ### Phase 2 — Heuristic gates (blocked on Task 0.5)
 - [ ] Task 2.1 — HH/HL / LH/LL structure

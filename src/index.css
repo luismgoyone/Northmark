@@ -1,3 +1,183 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   Northmark semantic tokens — see docs/ui-spec.md §4.
+   Light is the :root default; dark applies via the OS media query
+   AND an explicit [data-theme] override (both directions), so the
+   theme toggle always wins over the OS preference.
+   ============================================================ */
+
+:root {
+  --bg: #eef1f5;
+  --surface: #fbfcfe;
+  --surface-sunken: #e6eaf0;
+  --surface-raised: #ffffff;
+  --border: #d7dee7;
+  --border-strong: #c1cad6;
+
+  --ink: #1b2028;
+  --ink-2: #545f6d;
+  --ink-3: #838d9c;
+
+  --pass-fg: #0b7a4a;
+  --pass-bg: #e4f4ec;
+  --pass-bd: #b4dfcb;
+  --fail-fg: #c0392b;
+  --fail-bg: #fbe8e5;
+  --fail-bd: #f0c1b9;
+  --wait-fg: #2f6b9a;
+  --wait-bg: #e5eef6;
+  --wait-bd: #bad4e8;
+  --build-fg: #a06410;
+  --build-bg: #fbf0da;
+  --build-bd: #eed9a4;
+  --strong-fg: #0a6b52;
+  --strong-bg: #d8f0e6;
+  --strong-bd: #a4d9c6;
+  --danger-fg: #b21c1c;
+  --danger-bg: #fbe3e3;
+  --danger-bd: #f0b4b4;
+  --danger-solid: #d11f1f;
+  --defer-fg: #606b7a;
+  --defer-bg: #edf0f4;
+  --defer-bd: #d3dae2;
+
+  --brand: #c48a1a;
+  --focus: #2f6b9a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1015;
+    --surface: #151a21;
+    --surface-sunken: #0f131a;
+    --surface-raised: #1b212a;
+    --border: #28303b;
+    --border-strong: #394351;
+
+    --ink: #e9edf3;
+    --ink-2: #9aa6b3;
+    --ink-3: #66717f;
+
+    --pass-fg: #48cd8d;
+    --pass-bg: rgba(72, 205, 141, 0.13);
+    --pass-bd: rgba(72, 205, 141, 0.32);
+    --fail-fg: #f2725c;
+    --fail-bg: rgba(242, 114, 92, 0.13);
+    --fail-bd: rgba(242, 114, 92, 0.32);
+    --wait-fg: #71a9d7;
+    --wait-bg: rgba(113, 169, 215, 0.12);
+    --wait-bd: rgba(113, 169, 215, 0.3);
+    --build-fg: #e6b84c;
+    --build-bg: rgba(230, 184, 76, 0.13);
+    --build-bd: rgba(230, 184, 76, 0.33);
+    --strong-fg: #38d892;
+    --strong-bg: rgba(56, 216, 146, 0.16);
+    --strong-bd: rgba(56, 216, 146, 0.38);
+    --danger-fg: #ff6f62;
+    --danger-bg: rgba(226, 59, 59, 0.15);
+    --danger-bd: rgba(226, 59, 59, 0.42);
+    --danger-solid: #e23b3b;
+    --defer-fg: #7d8896;
+    --defer-bg: rgba(125, 136, 150, 0.11);
+    --defer-bd: rgba(125, 136, 150, 0.28);
+
+    --brand: #e5b74a;
+    --focus: #71a9d7;
+  }
+}
+
+/* Explicit toggle wins over the media query, both directions. */
+:root[data-theme='light'] {
+  --bg: #eef1f5;
+  --surface: #fbfcfe;
+  --surface-sunken: #e6eaf0;
+  --surface-raised: #ffffff;
+  --border: #d7dee7;
+  --border-strong: #c1cad6;
+  --ink: #1b2028;
+  --ink-2: #545f6d;
+  --ink-3: #838d9c;
+  --pass-fg: #0b7a4a;
+  --pass-bg: #e4f4ec;
+  --pass-bd: #b4dfcb;
+  --fail-fg: #c0392b;
+  --fail-bg: #fbe8e5;
+  --fail-bd: #f0c1b9;
+  --wait-fg: #2f6b9a;
+  --wait-bg: #e5eef6;
+  --wait-bd: #bad4e8;
+  --build-fg: #a06410;
+  --build-bg: #fbf0da;
+  --build-bd: #eed9a4;
+  --strong-fg: #0a6b52;
+  --strong-bg: #d8f0e6;
+  --strong-bd: #a4d9c6;
+  --danger-fg: #b21c1c;
+  --danger-bg: #fbe3e3;
+  --danger-bd: #f0b4b4;
+  --danger-solid: #d11f1f;
+  --defer-fg: #606b7a;
+  --defer-bg: #edf0f4;
+  --defer-bd: #d3dae2;
+  --brand: #c48a1a;
+  --focus: #2f6b9a;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0d1015;
+  --surface: #151a21;
+  --surface-sunken: #0f131a;
+  --surface-raised: #1b212a;
+  --border: #28303b;
+  --border-strong: #394351;
+  --ink: #e9edf3;
+  --ink-2: #9aa6b3;
+  --ink-3: #66717f;
+  --pass-fg: #48cd8d;
+  --pass-bg: rgba(72, 205, 141, 0.13);
+  --pass-bd: rgba(72, 205, 141, 0.32);
+  --fail-fg: #f2725c;
+  --fail-bg: rgba(242, 114, 92, 0.13);
+  --fail-bd: rgba(242, 114, 92, 0.32);
+  --wait-fg: #71a9d7;
+  --wait-bg: rgba(113, 169, 215, 0.12);
+  --wait-bd: rgba(113, 169, 215, 0.3);
+  --build-fg: #e6b84c;
+  --build-bg: rgba(230, 184, 76, 0.13);
+  --build-bd: rgba(230, 184, 76, 0.33);
+  --strong-fg: #38d892;
+  --strong-bg: rgba(56, 216, 146, 0.16);
+  --strong-bd: rgba(56, 216, 146, 0.38);
+  --danger-fg: #ff6f62;
+  --danger-bg: rgba(226, 59, 59, 0.15);
+  --danger-bd: rgba(226, 59, 59, 0.42);
+  --danger-solid: #e23b3b;
+  --defer-fg: #7d8896;
+  --defer-bg: rgba(125, 136, 150, 0.11);
+  --defer-bd: rgba(125, 136, 150, 0.28);
+  --brand: #e5b74a;
+  --focus: #71a9d7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: theme('fontFamily.sans');
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Single visible focus ring — the theme toggle is the only control. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
