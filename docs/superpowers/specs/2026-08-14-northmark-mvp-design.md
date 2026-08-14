@@ -158,11 +158,47 @@ type Config = {
 
 ## 6. Tech stack
 
-- **TypeScript + React + Vite** single-page app.
-- Engine (layers 2–4) as pure TS modules, built **test-first (TDD)**.
-- **Twelve Data** market-data provider (XAU/USD, M5/M15/H1, free tier, REST + websocket);
-  OANDA practice as the alternative.
-- If browser-side API keys become a concern, add a thin serverless proxy later (not MVP).
+- **Runtime shape: local-only SPA, no backend.** Single-user tool run on the owner's own
+  machine, so the Twelve Data API key lives in a gitignored `.env.local`
+  (`VITE_TWELVEDATA_KEY`) and never ships to a third party. A thin serverless proxy stays
+  deferred to Phase 3 (only needed if this is ever hosted publicly).
+- **TypeScript (strict)** — `strict` + `noUncheckedIndexedAccess` on; the `Candle` / `Gate`
+  / `Config` types are the executable spec, and candle arrays are indexed everywhere.
+- **React 18 + Vite** single-page app. One screen — no router, no global state library;
+  plain `useState`/`useEffect` plus a single `useMarketData()` polling hook.
+- **Vitest** for tests (same Vite pipeline). Layers 2–4 are pure, so this is where the bulk
+  of tests live — every indicator and gate ships with a fixture test before it's wired to UI.
+- **Tailwind CSS** for the UI (status colors + checklist/trade-card table).
+- **ESLint + Prettier** for lint/format.
+- Engine (layers 2–4) as **pure TS modules with no I/O**, built **test-first (TDD)**.
+- **Twelve Data** market-data provider (XAU/USD, M5/M15/H1, free tier). REST **poll aligned
+  to the M5 close** for MVP — websockets deferred (M5 does not need sub-minute latency).
+  OANDA practice remains the alternative feed.
+
+### Codebase structure
+
+Import direction is one-way and downward — nothing lower imports anything higher — which is
+what keeps the engine pure and fully unit-testable (enforced by convention for MVP; an
+ESLint boundary rule can be added later if needed):
+
+`ui` → `hooks` → `data` / `scoring` → `gates` → `indicators` → `types`
+
+```
+northmark/
+├─ src/
+│  ├─ data/          # Layer 1 — ONLY place with I/O (fetch + normalize → Candle[])
+│  │  └─ twelveData.ts
+│  ├─ indicators/    # Layer 2 — pure: ema.ts, stochastic.ts, swingPoints.ts
+│  ├─ gates/         # Layer 3 — pure: one file per gate, gates map 1:1 to checklist
+│  ├─ scoring/       # Layer 4 — pure: score.ts, vetoes.ts, risk.ts (SL/lot/TP)
+│  ├─ types.ts       # Candle, MarketContext, Gate, GateResult, Config
+│  ├─ config.ts      # the Config object from §5 (default values)
+│  ├─ hooks/         # useMarketData() — the one impure bridge to React
+│  └─ ui/            # Checklist, TradeCard, VetoList, Score components
+├─ tests/            # fixtures/ (known candle series); *.test.ts colocated with modules
+├─ .env.local        # VITE_TWELVEDATA_KEY (gitignored)
+└─ vite.config.ts
+```
 
 ---
 
