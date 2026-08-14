@@ -8,11 +8,11 @@
 ## Current
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
-- **Wave:** 1 — indicators (Wave 0 foundation complete)
-- **Resume pointer:** Wave 0 done (types, config, fixtures). Next is **Phase 1 · Wave 1 ·
-  Tasks 1.3–1.5 (`ema`, `stochastic`, `swingPoints`)** — 3 independent pure indicators,
-  dispatched 3-wide in parallel (engine-engineer). Heuristic gates (Phase 2) and
-  `vetoes.ts` (Task 1.9) block on Task 0.5.
+- **Wave:** 2 — deterministic gates (Wave 1 indicators complete, architect-gated)
+- **Resume pointer:** Waves 0–1 done (types, config, fixtures, ema, stochastic,
+  swingPoints — all green, 17 tests). Next is **Phase 1 · Wave 2 · Task 1.6 (breakout-close
+  gate)**, then Task 1.7 (R:R). Each gate → quant-reviewer for Appendix A fidelity.
+  `vetoes.ts` (Task 1.9) and Phase 2 block on Task 0.5.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -31,9 +31,9 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.0 — `types.ts` (architect)
 - [x] Task 1.1 — `config.ts` (architect; Tier-2 stoch/tolerance defaults)
 - [x] Task 1.2 — Test fixtures (qa)
-- [ ] Task 1.3 — `ema` indicator (engine + qa)
-- [ ] Task 1.4 — `stochastic` indicator (engine + qa)
-- [ ] Task 1.5 — `swingPoints` detector (engine + qa)
+- [x] Task 1.3 — `ema` indicator (engine + qa)
+- [x] Task 1.4 — `stochastic` indicator (engine + qa)
+- [x] Task 1.5 — `swingPoints` detector (engine + qa)
 - [ ] Task 1.6 — Breakout-close gate (engine + qa + quant-reviewer)
 - [ ] Task 1.7 — R:R gate (engine + qa + quant-reviewer)
 - [ ] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer)
