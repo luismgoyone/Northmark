@@ -8,10 +8,11 @@
 ## Current
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
-- **Wave:** 0 — foundation
-- **Resume pointer:** Tasks 1.0–1.1 done. Next runnable work is **Phase 1 · Wave 0 · Task
-  1.2 (test fixtures, qa)**. Deterministic Phase 1 proceeding; heuristic gates (Phase 2)
-  and `vetoes.ts` (Task 1.9) block on Task 0.5.
+- **Wave:** 1 — indicators (Wave 0 foundation complete)
+- **Resume pointer:** Wave 0 done (types, config, fixtures). Next is **Phase 1 · Wave 1 ·
+  Tasks 1.3–1.5 (`ema`, `stochastic`, `swingPoints`)** — 3 independent pure indicators,
+  dispatched 3-wide in parallel (engine-engineer). Heuristic gates (Phase 2) and
+  `vetoes.ts` (Task 1.9) block on Task 0.5.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -29,7 +30,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 ### Phase 1 — Deterministic core
 - [x] Task 1.0 — `types.ts` (architect)
 - [x] Task 1.1 — `config.ts` (architect; Tier-2 stoch/tolerance defaults)
-- [ ] Task 1.2 — Test fixtures (qa)
+- [x] Task 1.2 — Test fixtures (qa)
 - [ ] Task 1.3 — `ema` indicator (engine + qa)
 - [ ] Task 1.4 — `stochastic` indicator (engine + qa)
 - [ ] Task 1.5 — `swingPoints` detector (engine + qa)
