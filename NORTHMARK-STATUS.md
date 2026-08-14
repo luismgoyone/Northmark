@@ -9,9 +9,11 @@
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
 - **Wave:** 3 — scoring + risk (Wave 2 gates complete, both quant-reviewer FAITHFUL)
-- **Resume pointer:** Waves 0–2 done (through R:R gate) — 30 tests green. Next is **Phase 1
-  · Wave 3 · Task 1.8 (`risk.ts` — SL/lot/TP)**, then **Task 1.9 (`vetoes.ts`) → EXPECTED
-  TIER-3 STOP** (needs verbatim checklist, Task 0.5), then Task 1.10 (`score.ts`).
+- **Resume pointer:** Through Task 1.8 (`risk.ts`, FAITHFUL) done — 38 tests green. Task 1.9
+  (`vetoes.ts`) is BLOCKED on the checklist (Task 0.5); loop reorders around it. Next runnable
+  is **Task 1.10 (`score.ts`)** (consumes gate/veto *results*, not veto *rules* — unblocked),
+  then Wave 4 data (1.11), then Wave 5 UI (1.12–1.14) → **Phase 1 boundary** with only 1.9
+  outstanding.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -35,8 +37,8 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.5 — `swingPoints` detector (engine + qa)
 - [x] Task 1.6 — Breakout-close gate (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.7 — R:R gate (engine + qa + quant-reviewer; FAITHFUL)
-- [ ] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer)
-- [ ] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; needs 0.5)
+- [x] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer; FAITHFUL)
+- [!] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; BLOCKED on Task 0.5 — reordered around)
 - [ ] Task 1.10 — `score.ts` (engine + qa + quant-reviewer)
 - [ ] Task 1.11 — `twelveData.ts` data layer (engine + qa live)
 - [ ] Task 1.12 — Designer spec + mockup (designer)
@@ -71,9 +73,20 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
   $0.01/pip) scales what `breakoutBufferPips: 20` and `contractSize: 100` mean in dollars.
   Shipped defaults are fine to build against; confirm the convention before relying on live
   sizing/buffer magnitudes.
+- **Task 1.8 · `takeProfits` TP1 = 1.0R** (product-lead Tier-2). Why: bank partial profit at
+  the earliest defined point to de-risk fastest; TP1 need not align with the `minRR` entry
+  gate (independent thresholds). TP2 = 2R and the nextSR structure-cap are per MVP §4.
 
 ## Blocked / Tier-3 (waiting on Luis)
 
 - **Task 0.5** — the verbatim XAUUSD M5 checklist (13 steps + NO-TRADE vetoes + golden
   rules) is not yet in the repo. `quant-reviewer` needs it; Phase 2 gates and `vetoes.ts`
   (Task 1.9) depend on it. Paste it and it will be saved to `docs/checklist.md`.
+- **Task 1.9 (`vetoes.ts`)** — BLOCKED on Task 0.5 (needs the verbatim NO-TRADE conditions).
+  Loop reorders around it; it's the one Phase-1 item left for Luis at the boundary.
+- **`risk.ts` NaN-denominator** (quant-reviewer flag) — `positionSize` guards ≤0 but not
+  non-finite inputs (`NaN` slips to `NaN`). Recommend hard-failing to 0 on non-finite;
+  confirm at boundary.
+- **Long-only scope** (quant-reviewer flag) — `riskReward` and `takeProfits` assume long
+  setups (checklist is a bullish breakout system). Confirm shorts are out of MVP scope,
+  else the R:R sign and TP cap need direction-awareness.
