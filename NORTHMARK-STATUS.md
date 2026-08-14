@@ -8,10 +8,9 @@
 ## Current
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
-- **Wave:** 4 — data layer (Wave 3 scoring+risk complete: risk, vetoes, score all FAITHFUL)
-- **Resume pointer:** Waves 0–3 done — 62 tests green. Next is **Task 1.11 (`twelveData.ts`
-  data layer — the only I/O)**, then Wave 5 UI (1.12 designer → 1.13 hook → 1.14 components)
-  → **Phase 1 boundary**.
+- **Wave:** 5 — UI (Waves 0–4 done: full engine + data layer, 69 tests green)
+- **Resume pointer:** Next is **Task 1.12 (`designer` — UI spec + Artifact mockup)**, then
+  1.13 (`useMarketData` hook), then 1.14 (UI components) → **Phase 1 boundary**.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -39,7 +38,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; FAITHFUL — full 18-veto catalogue, all deferred)
 - [x] Task 1.10 — `score.ts` (engine + qa + quant-reviewer; FAITHFUL)
-- [ ] Task 1.11 — `twelveData.ts` data layer (engine + qa live)
+- [x] Task 1.11 — `twelveData.ts` data layer (engine; mocked-fetch tests green; LIVE-API check deferred → needs Luis' key)
 - [ ] Task 1.12 — Designer spec + mockup (designer)
 - [ ] Task 1.13 — `useMarketData` hook (frontend + qa)
 - [ ] Task 1.14 — UI components + App wiring (frontend + qa browser)
@@ -94,3 +93,6 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
   Confirm shorts are out of MVP scope, else R:R sign + TP cap need direction-awareness.
 - **XAUUSD pip→dollar convention** — see decision log; affects `breakoutBufferPips` /
   `contractSize` real magnitudes.
+- **Live-API check deferred** — `twelveData.ts` passes mocked-fetch tests, but the live
+  XAU/USD M5 freshness + rate-limit check (MVP §8) needs Luis' real `VITE_TWELVEDATA_KEY`
+  in `.env.local`. Provide the key to run it.
