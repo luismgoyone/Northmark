@@ -8,10 +8,10 @@
 ## Current
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
-- **Wave:** 3 — scoring + risk (Wave 2 gates complete, both quant-reviewer FAITHFUL)
-- **Resume pointer:** Through Task 1.9 (`vetoes.ts` — 18-veto catalogue, FAITHFUL, unblocked
-  by the checklist capture) done — 51 tests green. Next is **Task 1.10 (`score.ts`)**, then
-  Wave 4 data (1.11), then Wave 5 UI (1.12–1.14) → **Phase 1 boundary**.
+- **Wave:** 4 — data layer (Wave 3 scoring+risk complete: risk, vetoes, score all FAITHFUL)
+- **Resume pointer:** Waves 0–3 done — 62 tests green. Next is **Task 1.11 (`twelveData.ts`
+  data layer — the only I/O)**, then Wave 5 UI (1.12 designer → 1.13 hook → 1.14 components)
+  → **Phase 1 boundary**.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -38,7 +38,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.7 — R:R gate (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; FAITHFUL — full 18-veto catalogue, all deferred)
-- [ ] Task 1.10 — `score.ts` (engine + qa + quant-reviewer)
+- [x] Task 1.10 — `score.ts` (engine + qa + quant-reviewer; FAITHFUL)
 - [ ] Task 1.11 — `twelveData.ts` data layer (engine + qa live)
 - [ ] Task 1.12 — Designer spec + mockup (designer)
 - [ ] Task 1.13 — `useMarketData` hook (frontend + qa)
