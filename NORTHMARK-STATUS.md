@@ -1,0 +1,68 @@
+# Northmark — Build Status
+
+> Source of truth for the `/loop` build. The orchestrator reads this at the start of every
+> session/iteration, updates task states as work completes, and commits (a silent
+> checkpoint). To resume a session: **"continue Northmark"** → the checkpoint skill reads
+> this file and reports where things stand.
+
+## Current
+
+- **Phase:** 0 — Bootstrap
+- **Wave:** —
+- **Resume pointer:** Phase 0 complete except Task 0.5 (Tier-3, needs Luis). Next runnable
+  work is **Phase 1 · Wave 0 · Task 1.0 (`types.ts`)** — but deterministic Phase 1 can
+  begin now; heuristic gates (Phase 2) block on Task 0.5.
+- **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
+  Luis only on Tier 3.
+
+## Backlog
+
+State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (Tier-3).
+
+### Phase 0 — Bootstrap
+- [x] Task 0.1 — Scaffold Vite + React + TS strict + Tailwind + Vitest
+- [x] Task 0.2 — Create the 7 team agents
+- [x] Task 0.3 — Create NORTHMARK-STATUS.md
+- [ ] Task 0.4 — Create the checkpoint/resume skill
+- [!] Task 0.5 — Capture verbatim Appendix A checklist → `docs/checklist.md` (Tier-3: needs Luis)
+
+### Phase 1 — Deterministic core
+- [ ] Task 1.0 — `types.ts` (architect)
+- [ ] Task 1.1 — `config.ts` (architect; Tier-2 stoch/tolerance defaults)
+- [ ] Task 1.2 — Test fixtures (qa)
+- [ ] Task 1.3 — `ema` indicator (engine + qa)
+- [ ] Task 1.4 — `stochastic` indicator (engine + qa)
+- [ ] Task 1.5 — `swingPoints` detector (engine + qa)
+- [ ] Task 1.6 — Breakout-close gate (engine + qa + quant-reviewer)
+- [ ] Task 1.7 — R:R gate (engine + qa + quant-reviewer)
+- [ ] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer)
+- [ ] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; needs 0.5)
+- [ ] Task 1.10 — `score.ts` (engine + qa + quant-reviewer)
+- [ ] Task 1.11 — `twelveData.ts` data layer (engine + qa live)
+- [ ] Task 1.12 — Designer spec + mockup (designer)
+- [ ] Task 1.13 — `useMarketData` hook (frontend + qa)
+- [ ] Task 1.14 — UI components + App wiring (frontend + qa browser)
+- [ ] **Phase 1 boundary → STOP for Luis** (review decision log below)
+
+### Phase 2 — Heuristic gates (blocked on Task 0.5)
+- [ ] Task 2.1 — HH/HL / LH/LL structure
+- [ ] Task 2.2 — Consolidation detection
+- [ ] Task 2.3 — Retest interaction
+- [ ] Task 2.4 — Confirmation candle
+- [ ] Task 2.5 — Multi-timeframe bias
+- [ ] Task 2.6 — Wire heuristic gates into scoring
+- [ ] **Phase 2 boundary → STOP for Luis**
+
+### Phase 3 — Later, optional (needs Luis opt-in)
+- [ ] Task 3.1 — Continuous scanning + alerts (first real backend)
+- [ ] Task 3.2 — Optional auto-execution via broker API (deferred — execution risk)
+
+## Decision log (Tier-2 conservative defaults for Luis' phase-boundary review)
+
+_None yet._
+
+## Blocked / Tier-3 (waiting on Luis)
+
+- **Task 0.5** — the verbatim XAUUSD M5 checklist (13 steps + NO-TRADE vetoes + golden
+  rules) is not yet in the repo. `quant-reviewer` needs it; Phase 2 gates and `vetoes.ts`
+  (Task 1.9) depend on it. Paste it and it will be saved to `docs/checklist.md`.
