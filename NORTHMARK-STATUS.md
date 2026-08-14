@@ -7,11 +7,11 @@
 
 ## Current
 
-- **Phase:** 0 — Bootstrap
-- **Wave:** —
-- **Resume pointer:** Phase 0 complete except Task 0.5 (Tier-3, needs Luis). Next runnable
-  work is **Phase 1 · Wave 0 · Task 1.0 (`types.ts`)** — but deterministic Phase 1 can
-  begin now; heuristic gates (Phase 2) block on Task 0.5.
+- **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
+- **Wave:** 0 — foundation
+- **Resume pointer:** Phase 0 done except Task 0.5 (Tier-3, needs Luis). Next runnable work
+  is **Phase 1 · Wave 0 · Task 1.0 (`types.ts`, architect)**. Deterministic Phase 1 can
+  proceed now; heuristic gates (Phase 2) and `vetoes.ts` (Task 1.9) block on Task 0.5.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -23,7 +23,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 0.1 — Scaffold Vite + React + TS strict + Tailwind + Vitest
 - [x] Task 0.2 — Create the 7 team agents
 - [x] Task 0.3 — Create NORTHMARK-STATUS.md
-- [ ] Task 0.4 — Create the checkpoint/resume skill
+- [x] Task 0.4 — Create the checkpoint/resume skill
 - [!] Task 0.5 — Capture verbatim Appendix A checklist → `docs/checklist.md` (Tier-3: needs Luis)
 
 ### Phase 1 — Deterministic core
