@@ -1,0 +1,564 @@
+<title>Northmark Dashboard</title>
+<style>
+  /* ============================================================
+     NORTHMARK — read-only XAUUSD M5 trade-setup dashboard
+     Instrument-panel treatment. Calm by default (system biases to WAIT).
+     Semantic status is NEVER color-alone: every state = icon + text label.
+     ============================================================ */
+
+  /* ---- Design tokens (light is the :root default) ---- */
+  :root {
+    --bg:            #eef1f5;
+    --surface:       #fbfcfe;
+    --surface-sunken:#e6eaf0;
+    --surface-raised:#ffffff;
+    --border:        #d7dee7;
+    --border-strong: #c1cad6;
+
+    --ink:   #1b2028;
+    --ink-2: #545f6d;
+    --ink-3: #838d9c;
+
+    /* semantic — foreground (icon/text), tint fill, border */
+    --pass-fg:#0b7a4a; --pass-bg:#e4f4ec; --pass-bd:#b4dfcb;
+    --strong-fg:#0a6b52; --strong-bg:#d8f0e6; --strong-bd:#a4d9c6;
+    --fail-fg:#c0392b; --fail-bg:#fbe8e5; --fail-bd:#f0c1b9;
+    --wait-fg:#2f6b9a; --wait-bg:#e5eef6; --wait-bd:#bad4e8;
+    --build-fg:#a06410; --build-bg:#fbf0da; --build-bd:#eed9a4;
+    --danger-fg:#b21c1c; --danger-bg:#fbe3e3; --danger-bd:#f0b4b4; --danger-solid:#d11f1f;
+    --defer-fg:#606b7a; --defer-bg:#edf0f4; --defer-bd:#d3dae2;
+
+    --brand:#c48a1a;              /* gold — used only in the mark + a hairline */
+    --focus:#2f6b9a;
+
+    --shadow: 0 1px 2px rgba(20,28,40,.06), 0 8px 24px -12px rgba(20,28,40,.16);
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:            #0d1015;
+      --surface:       #151a21;
+      --surface-sunken:#0f131a;
+      --surface-raised:#1b212a;
+      --border:        #28303b;
+      --border-strong: #394351;
+
+      --ink:   #e9edf3;
+      --ink-2: #9aa6b3;
+      --ink-3: #66717f;
+
+      --pass-fg:#48cd8d; --pass-bg:rgba(72,205,141,.13); --pass-bd:rgba(72,205,141,.32);
+      --strong-fg:#38d892; --strong-bg:rgba(56,216,146,.16); --strong-bd:rgba(56,216,146,.38);
+      --fail-fg:#f2725c; --fail-bg:rgba(242,114,92,.13); --fail-bd:rgba(242,114,92,.32);
+      --wait-fg:#71a9d7; --wait-bg:rgba(113,169,215,.12); --wait-bd:rgba(113,169,215,.30);
+      --build-fg:#e6b84c; --build-bg:rgba(230,184,76,.13); --build-bd:rgba(230,184,76,.33);
+      --danger-fg:#ff6f62; --danger-bg:rgba(226,59,59,.15); --danger-bd:rgba(226,59,59,.42); --danger-solid:#e23b3b;
+      --defer-fg:#7d8896; --defer-bg:rgba(125,136,150,.11); --defer-bd:rgba(125,136,150,.28);
+
+      --brand:#e5b74a;
+      --focus:#71a9d7;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  /* explicit toggle wins over the media query, both directions */
+  :root[data-theme="light"] {
+    --bg:#eef1f5; --surface:#fbfcfe; --surface-sunken:#e6eaf0; --surface-raised:#ffffff;
+    --border:#d7dee7; --border-strong:#c1cad6; --ink:#1b2028; --ink-2:#545f6d; --ink-3:#838d9c;
+    --pass-fg:#0b7a4a; --pass-bg:#e4f4ec; --pass-bd:#b4dfcb;
+    --strong-fg:#0a6b52; --strong-bg:#d8f0e6; --strong-bd:#a4d9c6;
+    --fail-fg:#c0392b; --fail-bg:#fbe8e5; --fail-bd:#f0c1b9;
+    --wait-fg:#2f6b9a; --wait-bg:#e5eef6; --wait-bd:#bad4e8;
+    --build-fg:#a06410; --build-bg:#fbf0da; --build-bd:#eed9a4;
+    --danger-fg:#b21c1c; --danger-bg:#fbe3e3; --danger-bd:#f0b4b4; --danger-solid:#d11f1f;
+    --defer-fg:#606b7a; --defer-bg:#edf0f4; --defer-bd:#d3dae2;
+    --brand:#c48a1a; --focus:#2f6b9a;
+    --shadow: 0 1px 2px rgba(20,28,40,.06), 0 8px 24px -12px rgba(20,28,40,.16);
+  }
+  :root[data-theme="dark"] {
+    --bg:#0d1015; --surface:#151a21; --surface-sunken:#0f131a; --surface-raised:#1b212a;
+    --border:#28303b; --border-strong:#394351; --ink:#e9edf3; --ink-2:#9aa6b3; --ink-3:#66717f;
+    --pass-fg:#48cd8d; --pass-bg:rgba(72,205,141,.13); --pass-bd:rgba(72,205,141,.32);
+    --strong-fg:#38d892; --strong-bg:rgba(56,216,146,.16); --strong-bd:rgba(56,216,146,.38);
+    --fail-fg:#f2725c; --fail-bg:rgba(242,114,92,.13); --fail-bd:rgba(242,114,92,.32);
+    --wait-fg:#71a9d7; --wait-bg:rgba(113,169,215,.12); --wait-bd:rgba(113,169,215,.30);
+    --build-fg:#e6b84c; --build-bg:rgba(230,184,76,.13); --build-bd:rgba(230,184,76,.33);
+    --danger-fg:#ff6f62; --danger-bg:rgba(226,59,59,.15); --danger-bd:rgba(226,59,59,.42); --danger-solid:#e23b3b;
+    --defer-fg:#7d8896; --defer-bg:rgba(125,136,150,.11); --defer-bd:rgba(125,136,150,.28);
+    --brand:#e5b74a; --focus:#71a9d7;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 32px) 56px; }
+
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .eyebrow {
+    font-size: 11px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* ---------- Header ---------- */
+  header.top {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 6px 2px 18px;
+  }
+  .mark { display: flex; align-items: center; gap: 11px; margin-right: auto; }
+  .mark svg { display: block; }
+  .mark .name { font-size: 18px; font-weight: 680; letter-spacing: -.01em; }
+  .mark .sub { font-size: 12.5px; color: var(--ink-2); font-family: var(--mono); }
+  .mark .divider { width: 1px; height: 22px; background: var(--border-strong); margin: 0 2px; }
+
+  .live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); font-family: var(--mono); }
+  .live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pass-fg); box-shadow: 0 0 0 0 var(--pass-fg); animation: pulse 2.4s ease-out infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--pass-fg) 55%, transparent);} 70%{box-shadow:0 0 0 6px transparent;} 100%{box-shadow:0 0 0 0 transparent;} }
+  @media (prefers-reduced-motion: reduce){ .live .dot{ animation:none; } }
+
+  .badge-ro {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-2); background: var(--surface-sunken);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px;
+  }
+  .tgl {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--ink-2);
+    cursor: pointer;
+  }
+  .tgl:hover { color: var(--ink); border-color: var(--border-strong); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+
+  /* ---------- Signal banner ---------- */
+  .signal {
+    display: grid; grid-template-columns: auto 1fr auto; gap: clamp(16px, 3vw, 34px);
+    align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px clamp(16px, 2.4vw, 26px); margin-bottom: 16px;
+  }
+  .band { display: flex; flex-direction: column; gap: 8px; min-width: 132px; }
+  .band .lozenge {
+    display: inline-flex; align-items: center; gap: 9px; align-self: flex-start;
+    font-size: 20px; font-weight: 720; letter-spacing: .01em;
+    padding: 8px 15px; border-radius: 10px;
+    background: var(--build-bg); color: var(--build-fg); border: 1px solid var(--build-bd);
+  }
+  .band .count { font-size: 12.5px; color: var(--ink-2); }
+  .band .count b { color: var(--ink); font-family: var(--mono); }
+
+  .verdict { min-width: 0; }
+  .verdict .eyebrow { margin-bottom: 5px; }
+  .verdict p { margin: 0; font-size: 14.5px; color: var(--ink); max-width: 62ch; }
+  .verdict p .hi { font-family: var(--mono); font-weight: 600; }
+
+  /* confirmation meter — 10 discrete gate cells; fill style adds non-color encoding */
+  .meter { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .meter .cells { display: flex; gap: 5px; }
+  .meter .cell { width: 15px; height: 26px; border-radius: 4px; border: 1.5px solid var(--border-strong); background: transparent; }
+  .meter .cell.pass { background: var(--pass-fg); border-color: var(--pass-fg); }
+  .meter .cell.fail { background: var(--fail-fg); border-color: var(--fail-fg); position: relative; }
+  .meter .cell.fail::after { content:""; position:absolute; inset:0; background: linear-gradient(135deg, transparent 44%, var(--surface) 44%, var(--surface) 56%, transparent 56%); }
+  .meter .cell.wait { background: transparent; border-color: var(--wait-fg); }
+  .meter .legend { font-size: 11px; color: var(--ink-3); display: flex; gap: 12px; font-family: var(--mono); }
+  .meter .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .meter .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  /* ---------- Main grid ---------- */
+  .grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .panel > .head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 15px 18px 12px; border-bottom: 1px solid var(--border);
+  }
+  .panel > .head h2 { margin: 0; font-size: 13px; font-weight: 680; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
+  .panel > .head .aside { font-size: 12px; color: var(--ink-2); font-family: var(--mono); }
+
+  /* ---------- Trade card ---------- */
+  .tc-body { padding: 16px 18px 20px; }
+  .provisional {
+    display: inline-flex; align-items: center; gap: 7px; margin-bottom: 15px;
+    font-size: 12px; font-weight: 600; color: var(--build-fg);
+    background: var(--build-bg); border: 1px solid var(--build-bd); border-radius: 8px; padding: 6px 10px;
+  }
+  .direction { font-size: 12px; font-weight: 650; color: var(--pass-fg); letter-spacing: .04em; }
+
+  /* R:R ladder */
+  .ladder { margin: 6px 0 22px; }
+  .ladder .track {
+    position: relative; height: 12px; border-radius: 999px; background: var(--surface-sunken);
+    border: 1px solid var(--border); margin: 30px 0 34px;
+  }
+  .ladder .risk, .ladder .reward { position: absolute; top: 0; bottom: 0; }
+  .ladder .risk { background: var(--fail-bg); border: 1px solid var(--fail-bd); border-radius: 999px 0 0 999px; }
+  .ladder .reward { background: var(--pass-bg); border: 1px solid var(--pass-bd); border-radius: 0 999px 999px 0; }
+  .ladder .stop { position: absolute; top: 50%; width: 2px; height: 22px; transform: translate(-50%,-50%); }
+  .ladder .stop.entry { background: var(--ink); height: 26px; width: 2.5px; }
+  .ladder .stop.sl { background: var(--fail-fg); }
+  .ladder .stop.tp { background: var(--pass-fg); }
+  .ladder .tag {
+    position: absolute; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px;
+    font-family: var(--mono); letter-spacing: .02em;
+  }
+  .ladder .tag .k { display: block; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .ladder .tag.top { top: -28px; text-align: center; }
+  .ladder .tag.bot { bottom: -30px; text-align: center; }
+  .ladder .tag .v { color: var(--ink); font-weight: 600; }
+  .ladder .tag.sl .v { color: var(--fail-fg); }
+  .ladder .tag.tp .v { color: var(--pass-fg); }
+
+  .tc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .cell-k { background: var(--surface-raised); padding: 12px 13px; }
+  .cell-k .k { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+  .cell-k .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; color: var(--ink); }
+  .cell-k .v small { font-size: 11px; color: var(--ink-3); font-weight: 500; }
+  .cell-k.risk .v { color: var(--fail-fg); }
+  .cell-k.rr .v { color: var(--ink); }
+  .rr-flag { font-size: 11px; margin-top: 3px; display: inline-flex; align-items: center; gap: 5px; color: var(--fail-fg); font-family: var(--sans); }
+
+  /* ---------- Veto list ---------- */
+  .veto-body { padding: 8px 14px 14px; }
+  .veto-row {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+    padding: 11px 6px; border-bottom: 1px solid var(--border);
+  }
+  .veto-row:last-child { border-bottom: 0; }
+  .veto-row .vname { font-size: 13.5px; color: var(--ink); }
+  .veto-row .vsub { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .veto-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; }
+  .veto-icon.defer { background: var(--defer-bg); color: var(--defer-fg); border: 1px dashed var(--defer-bd); }
+  .veto-icon.danger { background: var(--danger-solid); color: #fff; border: 1px solid var(--danger-solid); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .chip.defer { color: var(--defer-fg); background: var(--defer-bg); border-color: var(--defer-bd); border-style: dashed; }
+  .chip.danger { color: #fff; background: var(--danger-solid); border-color: var(--danger-solid); }
+  .veto-foot {
+    display: flex; align-items: center; gap: 9px; padding: 12px 6px 4px; margin-top: 2px;
+    border-top: 1px solid var(--border); font-size: 11.5px; color: var(--ink-3);
+  }
+  .veto-foot .swatch { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ---------- Checklist ---------- */
+  .checklist { margin-top: 16px; }
+  .cl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .cl-row {
+    display: grid; grid-template-columns: 26px auto 1fr auto; align-items: center; gap: 12px;
+    background: var(--surface); padding: 13px 16px;
+  }
+  .cl-row .step { font-family: var(--mono); font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .cl-icon { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; }
+  .cl-icon.pass   { background: var(--pass-bg);  color: var(--pass-fg);  border: 1px solid var(--pass-bd); }
+  .cl-icon.fail   { background: var(--fail-bg);  color: var(--fail-fg);  border: 1px solid var(--fail-bd); }
+  .cl-icon.wait   { background: var(--wait-bg);  color: var(--wait-fg);  border: 1px solid var(--wait-bd); }
+  .cl-main { min-width: 0; }
+  .cl-main .gate { font-size: 13.5px; font-weight: 550; color: var(--ink); }
+  .cl-main .detail { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .cl-main .detail .num { color: var(--ink); }
+  .cl-lab { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  .cl-lab.pass { color: var(--pass-fg); }
+  .cl-lab.fail { color: var(--fail-fg); }
+  .cl-lab.wait { color: var(--wait-fg); }
+
+  footer.disc {
+    margin-top: 22px; padding: 16px 18px; text-align: center;
+    font-size: 12px; color: var(--ink-3); border: 1px dashed var(--border-strong);
+    border-radius: var(--radius); background: var(--surface-sunken);
+  }
+  footer.disc b { color: var(--ink-2); font-weight: 650; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px) {
+    .signal { grid-template-columns: 1fr; }
+    .meter { align-items: flex-start; }
+    .grid { grid-template-columns: 1fr; }
+    .cl-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .tc-grid { grid-template-columns: repeat(2, 1fr); }
+    .mark .sub { display: none; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- ============ HEADER ============ -->
+  <header class="top">
+    <div class="mark">
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.5" stroke="var(--border-strong)" stroke-width="1"/>
+        <path d="M16 3.5 L19 16 L16 28.5 L13 16 Z" fill="var(--brand)"/>
+        <path d="M3.5 16 L16 13.4 L28.5 16 L16 18.6 Z" fill="var(--ink-3)" opacity="0.5"/>
+        <circle cx="16" cy="16" r="2" fill="var(--ink)"/>
+      </svg>
+      <span class="name">Northmark</span>
+      <span class="divider"></span>
+      <span class="sub">XAU/USD · M5</span>
+    </div>
+
+    <span class="live"><span class="dot"></span>Updated 09:41:20 GMT · next M5 close 09:45</span>
+    <span class="badge-ro">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2"/></svg>
+      Read-only
+    </span>
+    <button class="tgl" id="themeBtn" aria-label="Toggle light / dark theme">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
+  </header>
+
+  <!-- ============ SIGNAL BANNER ============ -->
+  <section class="signal" aria-label="Confidence signal">
+    <div class="band">
+      <span class="lozenge">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v4m0 10v4m9-9h-4M7 12H3m14.5-6.5-2.8 2.8M9.3 14.7l-2.8 2.8m0-11.3 2.8 2.8m5.4 5.4 2.8 2.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        BUILDING
+      </span>
+      <span class="count"><b>6</b> of <b>10</b> confirmations</span>
+    </div>
+
+    <div class="verdict">
+      <div class="eyebrow">Verdict</div>
+      <p><span class="hi">Hold — not a trade yet.</span> Six of ten confirmations are in place. Waiting on the <b>retest</b> and a <b>confirmation candle</b>; current <span class="hi">R:R is 1.3</span>, below the 1.5 minimum. No vetoes active.</p>
+    </div>
+
+    <div class="meter" aria-hidden="true">
+      <div class="cells">
+        <span class="cell pass"></span><span class="cell wait"></span><span class="cell pass"></span>
+        <span class="cell pass"></span><span class="cell pass"></span><span class="cell wait"></span>
+        <span class="cell wait"></span><span class="cell pass"></span><span class="cell pass"></span>
+        <span class="cell fail"></span>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--pass-fg)"></i>pass</span>
+        <span><i style="background:transparent;border:1.5px solid var(--wait-fg)"></i>wait</span>
+        <span><i style="background:var(--fail-fg)"></i>fail</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRADE CARD + VETOES ============ -->
+  <div class="grid">
+
+    <!-- Trade card -->
+    <section class="panel" aria-label="Trade card">
+      <div class="head">
+        <h2>Trade Card</h2>
+        <span class="aside direction">▲ LONG · XAU/USD</span>
+      </div>
+      <div class="tc-body">
+        <span class="provisional">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Provisional levels — setup still building, not confirmed
+        </span>
+
+        <!-- R:R ladder: SL(risk) · Entry · TP1 · TP2 -->
+        <div class="ladder" role="img" aria-label="Risk to reward ladder: stop 2415.90, entry 2418.80, TP1 2422.60, TP2 2425.30">
+          <div class="track">
+            <div class="risk"   style="left:0%;    width:30.85%"></div>
+            <div class="reward" style="left:30.85%; width:69.15%"></div>
+
+            <div class="stop sl"    style="left:0%"></div>
+            <div class="stop entry" style="left:30.85%"></div>
+            <div class="stop tp"    style="left:71.3%"></div>
+            <div class="stop tp"    style="left:100%"></div>
+
+            <div class="tag bot sl"    style="left:0%"><span class="k">SL</span><span class="v num">2,415.90</span></div>
+            <div class="tag top"       style="left:30.85%"><span class="k">Entry</span><span class="v num">2,418.80</span></div>
+            <div class="tag top tp"    style="left:71.3%"><span class="k">TP1</span><span class="v num">2,422.60</span></div>
+            <div class="tag bot tp"    style="left:100%"><span class="k">TP2</span><span class="v num">2,425.30</span></div>
+          </div>
+        </div>
+
+        <div class="tc-grid">
+          <div class="cell-k"><div class="k">Entry</div><div class="v num">2,418.80</div></div>
+          <div class="cell-k risk"><div class="k">Stop Loss</div><div class="v num">2,415.90 <small>−2.90</small></div></div>
+          <div class="cell-k"><div class="k">Lot Size</div><div class="v num">0.01</div></div>
+
+          <div class="cell-k"><div class="k">TP1 · 1.3R</div><div class="v num">2,422.60</div></div>
+          <div class="cell-k"><div class="k">TP2 · 2.2R</div><div class="v num">2,425.30</div></div>
+          <div class="cell-k risk"><div class="k">Risk $</div><div class="v num">$2.00 <small>1%</small></div></div>
+
+          <div class="cell-k rr" style="grid-column: span 3;">
+            <div class="k">Reward : Risk</div>
+            <div class="v num">1.3 <small>to TP1</small> &nbsp;·&nbsp; 2.2 <small>to TP2</small></div>
+            <span class="rr-flag">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              TP1 R:R below 1.5 minimum
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Veto list -->
+    <section class="panel" aria-label="No-trade vetoes">
+      <div class="head">
+        <h2>No-Trade Vetoes</h2>
+        <span class="aside">0 active · 5 monitoring</span>
+      </div>
+      <div class="veto-body">
+
+        <div class="veto-row">
+          <span class="veto-icon defer" title="Monitoring">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor"/></svg>
+          </span>
+          <div><div class="vname">News / high-impact event window</div><div class="vsub">Not yet evaluable — Phase 1</div></div>
+          <span class="chip defer">Monitoring</span>
+        </div>
+
+        <div class="veto-row">
+          <span class="veto-icon defer" title="Monitoring">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor"/></svg>
+          </span>
+          <div><div class="vname">Chasing an extended move</div><div class="vsub">Not yet evaluable — Phase 1</div></div>
+          <span class="chip defer">Monitoring</span>
+        </div>
+
+        <div class="veto-row">
+          <span class="veto-icon defer" title="Monitoring">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor"/></svg>
+          </span>
+          <div><div class="vname">Counter-trend against H1 bias</div><div class="vsub">Not yet evaluable — Phase 1</div></div>
+          <span class="chip defer">Monitoring</span>
+        </div>
+
+        <div class="veto-row">
+          <span class="veto-icon defer" title="Monitoring">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor"/></svg>
+          </span>
+          <div><div class="vname">Revenge / over-sized position</div><div class="vsub">Not yet evaluable — Phase 1</div></div>
+          <span class="chip defer">Monitoring</span>
+        </div>
+
+        <div class="veto-row">
+          <span class="veto-icon defer" title="Monitoring">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="3.5" height="14" rx="1" fill="currentColor"/></svg>
+          </span>
+          <div><div class="vname">Breakout on a wick, not a close</div><div class="vsub">Not yet evaluable — Phase 1</div></div>
+          <span class="chip defer">Monitoring</span>
+        </div>
+
+        <div class="veto-foot">
+          <span class="swatch">
+            <span class="veto-icon danger" style="width:18px;height:18px;border-radius:5px">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 8v5M12 16v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </span>
+            When a veto <b style="color:var(--danger-fg)">&nbsp;triggers</b>, it fills red with a No-Trade chip and forces the signal to WAIT.
+          </span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ LIVE CHECKLIST ============ -->
+  <section class="panel checklist" aria-label="Live checklist">
+    <div class="head">
+      <h2>Live Checklist</h2>
+      <span class="aside">Bias → structure → break → retest → confirm → risk</span>
+    </div>
+    <div class="cl-grid">
+
+      <div class="cl-row">
+        <span class="step">01</span>
+        <span class="cl-icon pass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="cl-main"><div class="gate">H1 / M15 bias</div><div class="detail">Both timeframes bullish</div></div>
+        <span class="cl-lab pass">Pass</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">02</span>
+        <span class="cl-icon wait"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Market structure (HH/HL)</div><div class="detail">Higher-high forming, unconfirmed</div></div>
+        <span class="cl-lab wait">Wait</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">03</span>
+        <span class="cl-icon pass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Consolidation before break</div><div class="detail">Flat EMA9, <span class="num">12</span>-bar coil</div></div>
+        <span class="cl-lab pass">Pass</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">04</span>
+        <span class="cl-icon pass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Resistance level identified</div><div class="detail"><span class="num">2,418.60</span> · 3 touches</div></div>
+        <span class="cl-lab pass">Pass</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">05</span>
+        <span class="cl-icon pass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Breakout close (not wick)</div><div class="detail">M5 closed <span class="num">2,419.10</span> above level</div></div>
+        <span class="cl-lab pass">Pass</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">06</span>
+        <span class="cl-icon wait"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Retest of level</div><div class="detail">Price <span class="num">2,419.40</span>, awaiting pullback</div></div>
+        <span class="cl-lab wait">Wait</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">07</span>
+        <span class="cl-icon wait"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Confirmation candle</div><div class="detail">No engulfing / rejection yet</div></div>
+        <span class="cl-lab wait">Wait</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">08</span>
+        <span class="cl-icon pass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Price above rising EMA9</div><div class="detail"><span class="num">2,419.40</span> &gt; EMA9 <span class="num">2,417.80</span> ↑</div></div>
+        <span class="cl-lab pass">Pass</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">09</span>
+        <span class="cl-icon pass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Stochastic turning up</div><div class="detail">%K <span class="num">24</span> crossing %D, oversold</div></div>
+        <span class="cl-lab pass">Pass</span>
+      </div>
+
+      <div class="cl-row">
+        <span class="step">10</span>
+        <span class="cl-icon fail"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6 18 18M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+        <div class="cl-main"><div class="gate">Reward : Risk ≥ 1.5</div><div class="detail">Current R:R <span class="num">1.3</span> to TP1 — need ≥ <span class="num">1.5</span></div></div>
+        <span class="cl-lab fail">Fail</span>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="disc">
+    <b>Read-only decision support.</b> Northmark scans and scores your checklist — it never places orders, holds funds, or auto-trades. You place the trade in your own broker. Not financial advice.
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeBtn');
+    btn.addEventListener('click', function () {
+      var root = document.documentElement;
+      var now = root.getAttribute('data-theme');
+      if (!now) {
+        now = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      root.setAttribute('data-theme', now === 'dark' ? 'light' : 'dark');
+    });
+  })();
+</script>

@@ -9,8 +9,9 @@
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
 - **Wave:** 5 — UI (Waves 0–4 done: full engine + data layer, 69 tests green)
-- **Resume pointer:** Next is **Task 1.12 (`designer` — UI spec + Artifact mockup)**, then
-  1.13 (`useMarketData` hook), then 1.14 (UI components) → **Phase 1 boundary**.
+- **Resume pointer:** Task 1.12 (designer spec + mockup, APPROVED) done. Next is **Task 1.13
+  (`useMarketData` hook)**, then 1.14 (UI components + qa browser) → **Phase 1 boundary**.
+  Mockup: https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -39,7 +40,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; FAITHFUL — full 18-veto catalogue, all deferred)
 - [x] Task 1.10 — `score.ts` (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.11 — `twelveData.ts` data layer (engine; mocked-fetch tests green; LIVE-API check deferred → needs Luis' key)
-- [ ] Task 1.12 — Designer spec + mockup (designer)
+- [x] Task 1.12 — Designer spec + mockup (designer; product-lead APPROVED Tier-2; mockup published)
 - [ ] Task 1.13 — `useMarketData` hook (frontend + qa)
 - [ ] Task 1.14 — UI components + App wiring (frontend + qa browser)
 - [ ] **Phase 1 boundary → STOP for Luis** (review decision log below)
@@ -71,6 +72,9 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
   $0.01/pip) scales what `breakoutBufferPips: 20` and `contractSize: 100` mean in dollars.
   Shipped defaults are fine to build against; confirm the convention before relying on live
   sizing/buffer magnitudes.
+- **Task 1.12 · UI palette** approved on the secondary-encoding guarantee (status is never
+  color-alone: icon + label everywhere). CVD/ΔE validator run **deferred** to frontend/QA —
+  run `dataviz/scripts/validate_palette.js` on the status hexes and snap any FAIL.
 - **Task 1.8 · `takeProfits` TP1 = 1.0R** (product-lead Tier-2). Why: bank partial profit at
   the earliest defined point to de-risk fastest; TP1 need not align with the `minRR` entry
   gate (independent thresholds). TP2 = 2R and the nextSR structure-cap are per MVP §4.
