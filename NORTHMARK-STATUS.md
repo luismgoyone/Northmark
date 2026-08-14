@@ -8,10 +8,10 @@
 ## Current
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
-- **Wave:** 2 — deterministic gates (Wave 1 indicators complete, architect-gated)
-- **Resume pointer:** Waves 0–1 + Task 1.6 (breakout-close, quant-reviewer FAITHFUL) done
-  — 24 tests green. Next is **Phase 1 · Wave 2 · Task 1.7 (R:R gate)**. Each gate →
-  quant-reviewer. `vetoes.ts` (Task 1.9) and Phase 2 block on Task 0.5.
+- **Wave:** 3 — scoring + risk (Wave 2 gates complete, both quant-reviewer FAITHFUL)
+- **Resume pointer:** Waves 0–2 done (through R:R gate) — 30 tests green. Next is **Phase 1
+  · Wave 3 · Task 1.8 (`risk.ts` — SL/lot/TP)**, then **Task 1.9 (`vetoes.ts`) → EXPECTED
+  TIER-3 STOP** (needs verbatim checklist, Task 0.5), then Task 1.10 (`score.ts`).
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -34,7 +34,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.4 — `stochastic` indicator (engine + qa)
 - [x] Task 1.5 — `swingPoints` detector (engine + qa)
 - [x] Task 1.6 — Breakout-close gate (engine + qa + quant-reviewer; FAITHFUL)
-- [ ] Task 1.7 — R:R gate (engine + qa + quant-reviewer)
+- [x] Task 1.7 — R:R gate (engine + qa + quant-reviewer; FAITHFUL)
 - [ ] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer)
 - [ ] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; needs 0.5)
 - [ ] Task 1.10 — `score.ts` (engine + qa + quant-reviewer)
