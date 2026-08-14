@@ -216,6 +216,22 @@ multi-timeframe bias — each with tunable thresholds calibrated against past ch
 continuous scanning + alerts; then, only once the engine is trusted, optional
 auto-execution via broker API (re-introduces execution risk — explicitly deferred).
 
+### When does a backend appear?
+
+**No backend in Phases 1–2.** Both are 100% local-only SPA — the entire "make the engine
+correct and trustworthy" arc ships with zero server. **Phase 3 is the first real backend
+need**, and it's driven by two distinct concerns — do not conflate them:
+
+- **Scanning / execution backend (arrives with Phase 3):** continuous scanning + alerts
+  require a process that runs *while the browser tab is closed* — a local SPA cannot poll
+  24/7 or push notifications. Auto-execution likewise must run server-side (broker
+  credentials and pending orders can't depend on an open tab). This is the backend Phase 3
+  actually introduces.
+- **Key-proxy backend (optional, only if hosted publicly):** hiding the Twelve Data key
+  behind a thin serverless proxy (§6) is *only* needed if Northmark is ever hosted for
+  others. While it stays local-only, this never has to happen — it is optional even in
+  Phase 3.
+
 ---
 
 ## 8. Risks & open questions
