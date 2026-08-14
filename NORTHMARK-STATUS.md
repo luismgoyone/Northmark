@@ -9,9 +9,9 @@
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
 - **Wave:** 0 — foundation
-- **Resume pointer:** Task 1.0 (`types.ts`) done. Next runnable work is **Phase 1 · Wave 0
-  · Task 1.1 (`config.ts`, architect)**. Deterministic Phase 1 proceeding; heuristic gates
-  (Phase 2) and `vetoes.ts` (Task 1.9) block on Task 0.5.
+- **Resume pointer:** Tasks 1.0–1.1 done. Next runnable work is **Phase 1 · Wave 0 · Task
+  1.2 (test fixtures, qa)**. Deterministic Phase 1 proceeding; heuristic gates (Phase 2)
+  and `vetoes.ts` (Task 1.9) block on Task 0.5.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -28,7 +28,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 
 ### Phase 1 — Deterministic core
 - [x] Task 1.0 — `types.ts` (architect)
-- [ ] Task 1.1 — `config.ts` (architect; Tier-2 stoch/tolerance defaults)
+- [x] Task 1.1 — `config.ts` (architect; Tier-2 stoch/tolerance defaults)
 - [ ] Task 1.2 — Test fixtures (qa)
 - [ ] Task 1.3 — `ema` indicator (engine + qa)
 - [ ] Task 1.4 — `stochastic` indicator (engine + qa)
@@ -59,7 +59,18 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 
 ## Decision log (Tier-2 conservative defaults for Luis' phase-boundary review)
 
-_None yet._
+- **Task 1.1 · `config.stoch` = `{ k: 14, d: 3, smooth: 3, overbought: 80, oversold: 20 }`.**
+  Why: canonical Wilder 14/3/3; 80/20 zones (vs looser 70/30) keep the confirmation zone
+  narrow so borderline momentum does not pass — bias-toward-WAIT.
+- **Task 1.1 · `config.tolerances` = `{ retestBand: 0.0005, breakoutBufferPips: 20, consolidationLookback: 20 }`.**
+  Why: `retestBand` = 0.05% of price (tight touch band → only genuine level interaction
+  confirms a retest); `breakoutBufferPips` = 20 pips (close must clear the level by a real
+  margin, filtering wick false-breakouts); `consolidationLookback` = 20 candles (~1h40m on
+  M5, requires a sustained base). All set to the stricter end of standard ranges.
+- **⚠ Flag (needs Luis at phase boundary):** XAUUSD **pip→dollar convention** (e.g. $0.10 vs
+  $0.01/pip) scales what `breakoutBufferPips: 20` and `contractSize: 100` mean in dollars.
+  Shipped defaults are fine to build against; confirm the convention before relying on live
+  sizing/buffer magnitudes.
 
 ## Blocked / Tier-3 (waiting on Luis)
 
