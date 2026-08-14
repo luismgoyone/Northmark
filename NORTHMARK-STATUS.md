@@ -9,9 +9,9 @@
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
 - **Wave:** 5 — UI (Waves 0–4 done: full engine + data layer, 69 tests green)
-- **Resume pointer:** Task 1.12 (designer spec + mockup, APPROVED) done. Next is **Task 1.13
-  (`useMarketData` hook)**, then 1.14 (UI components + qa browser) → **Phase 1 boundary**.
-  Mockup: https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
+- **Resume pointer:** Through Task 1.13 (`useMarketData` hook) done — 75 tests green. Next is
+  the **last Phase-1 task: 1.14 (UI components + App wiring + qa browser check)** → **Phase 1
+  boundary**. Mockup: https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -41,7 +41,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.10 — `score.ts` (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.11 — `twelveData.ts` data layer (engine; mocked-fetch tests green; LIVE-API check deferred → needs Luis' key)
 - [x] Task 1.12 — Designer spec + mockup (designer; product-lead APPROVED Tier-2; mockup published)
-- [ ] Task 1.13 — `useMarketData` hook (frontend + qa)
+- [x] Task 1.13 — `useMarketData` hook (frontend; only impure bridge; 75 tests)
 - [ ] Task 1.14 — UI components + App wiring (frontend + qa browser)
 - [ ] **Phase 1 boundary → STOP for Luis** (review decision log below)
 
