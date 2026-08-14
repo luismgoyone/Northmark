@@ -16,7 +16,8 @@
 - Breakout has not been confirmed
 - Retest hasn't occurred for the primary setup
 - Confirmation is weak
-- EMA20 strongly disagrees
+- EMA20 strongly disagrees  _[CORRECTION per Luis 2026-08-14: this means **EMA9** — the
+  system uses EMA9 throughout; "EMA20" was a typo. The veto is "EMA9 strongly disagrees".]_
 - Risk/reward is insufficient
 - TP is too close
 - SL cannot logically be placed

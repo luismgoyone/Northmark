@@ -11,5 +11,11 @@ module.exports = {
   rules: {
     ...require('eslint-plugin-react-hooks').configs.recommended.rules,
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    // Underscore-prefixed = intentionally unused (e.g. signature params on pure stubs
+    // that later phases will fill in). Standard TS convention.
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+    ],
   },
 }

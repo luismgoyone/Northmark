@@ -9,11 +9,9 @@
 
 - **Phase:** 1 — Deterministic core (Phase 0 bootstrap complete)
 - **Wave:** 3 — scoring + risk (Wave 2 gates complete, both quant-reviewer FAITHFUL)
-- **Resume pointer:** Through Task 1.8 (`risk.ts`, FAITHFUL) done — 38 tests green. Task 1.9
-  (`vetoes.ts`) is BLOCKED on the checklist (Task 0.5); loop reorders around it. Next runnable
-  is **Task 1.10 (`score.ts`)** (consumes gate/veto *results*, not veto *rules* — unblocked),
-  then Wave 4 data (1.11), then Wave 5 UI (1.12–1.14) → **Phase 1 boundary** with only 1.9
-  outstanding.
+- **Resume pointer:** Through Task 1.9 (`vetoes.ts` — 18-veto catalogue, FAITHFUL, unblocked
+  by the checklist capture) done — 51 tests green. Next is **Task 1.10 (`score.ts`)**, then
+  Wave 4 data (1.11), then Wave 5 UI (1.12–1.14) → **Phase 1 boundary**.
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
@@ -26,7 +24,8 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 0.2 — Create the 7 team agents
 - [x] Task 0.3 — Create NORTHMARK-STATUS.md
 - [x] Task 0.4 — Create the checkpoint/resume skill
-- [!] Task 0.5 — Capture verbatim Appendix A checklist → `docs/checklist.md` (Tier-3: needs Luis)
+- [~] Task 0.5 — Capture verbatim checklist → `docs/checklist.md` (NO-TRADE section captured;
+  13-step sequence + "This is critical" continuation still pending from Luis)
 
 ### Phase 1 — Deterministic core
 - [x] Task 1.0 — `types.ts` (architect)
@@ -38,7 +37,7 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.6 — Breakout-close gate (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.7 — R:R gate (engine + qa + quant-reviewer; FAITHFUL)
 - [x] Task 1.8 — `risk.ts` SL/lot/TP (engine + qa + quant-reviewer; FAITHFUL)
-- [!] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; BLOCKED on Task 0.5 — reordered around)
+- [x] Task 1.9 — `vetoes.ts` (engine + qa + quant-reviewer; FAITHFUL — full 18-veto catalogue, all deferred)
 - [ ] Task 1.10 — `score.ts` (engine + qa + quant-reviewer)
 - [ ] Task 1.11 — `twelveData.ts` data layer (engine + qa live)
 - [ ] Task 1.12 — Designer spec + mockup (designer)
@@ -77,16 +76,21 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
   the earliest defined point to de-risk fastest; TP1 need not align with the `minRR` entry
   gate (independent thresholds). TP2 = 2R and the nextSR structure-cap are per MVP §4.
 
-## Blocked / Tier-3 (waiting on Luis)
+## Resolved (Luis, 2026-08-14)
 
-- **Task 0.5** — the verbatim XAUUSD M5 checklist (13 steps + NO-TRADE vetoes + golden
-  rules) is not yet in the repo. `quant-reviewer` needs it; Phase 2 gates and `vetoes.ts`
-  (Task 1.9) depend on it. Paste it and it will be saved to `docs/checklist.md`.
-- **Task 1.9 (`vetoes.ts`)** — BLOCKED on Task 0.5 (needs the verbatim NO-TRADE conditions).
-  Loop reorders around it; it's the one Phase-1 item left for Luis at the boundary.
+- **EMA20 vs EMA9 contradiction** → resolved: it's **EMA9** (typo in the veto). Annotated in
+  `docs/checklist.md`; `vetoes.ts` uses `ema9-disagrees`.
+- **Unavailable vetoes handling** → resolved: **defer with explicit stubs** (chosen). Done in
+  `vetoes.ts` (phase-2 / phase-3 tags).
+
+## Blocked / Tier-3 (waiting on Luis — surface at Phase 1 boundary)
+
+- **Checklist capture (Task 0.5)** — NO-TRADE section captured. Still pending: the **13-step
+  entry sequence** and the **"This is critical:"** continuation. **quant-reviewer flag:** if
+  "This is critical:" contains MORE NO-TRADE conditions, the veto count (18) is not final.
 - **`risk.ts` NaN-denominator** (quant-reviewer flag) — `positionSize` guards ≤0 but not
-  non-finite inputs (`NaN` slips to `NaN`). Recommend hard-failing to 0 on non-finite;
-  confirm at boundary.
-- **Long-only scope** (quant-reviewer flag) — `riskReward` and `takeProfits` assume long
-  setups (checklist is a bullish breakout system). Confirm shorts are out of MVP scope,
-  else the R:R sign and TP cap need direction-awareness.
+  non-finite inputs (`NaN` slips to `NaN`). Recommend hard-failing to 0 on non-finite.
+- **Long-only scope** (quant-reviewer flag) — `riskReward` / `takeProfits` assume long setups.
+  Confirm shorts are out of MVP scope, else R:R sign + TP cap need direction-awareness.
+- **XAUUSD pip→dollar convention** — see decision log; affects `breakoutBufferPips` /
+  `contractSize` real magnitudes.
