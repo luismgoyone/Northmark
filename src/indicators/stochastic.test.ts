@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stochastic } from './stochastic'
+import { stochastic, stochasticSeries } from './stochastic'
 import type { Candle } from '../types'
 import rising from '../../tests/fixtures/rising.json'
 import falling from '../../tests/fixtures/falling.json'
@@ -57,5 +57,45 @@ describe('stochastic', () => {
     expect(r.k).toBeCloseTo(6.0, 0)
     expect(r.zone).toBe('oversold')
     expect(r.slope).toBe('up')
+  })
+})
+
+describe('stochasticSeries', () => {
+  const mk = (n: number): Candle[] =>
+    Array.from({ length: n }, (_, i) => {
+      const base = 100 + Math.sin(i / 2) * 5
+      return { time: i * 1000, open: base, high: base + 1, low: base - 1, close: base }
+    })
+
+  it('returns one entry per candle', () => {
+    const out = stochasticSeries(mk(40), 14, 3, 3)
+    expect(out).toHaveLength(40)
+  })
+
+  it('is null during warmup and settled after', () => {
+    const out = stochasticSeries(mk(40), 14, 3, 3)
+    const minIndex = 14 + 3 + 3 - 3 // 17
+    expect(out[minIndex - 1]).toBeNull()
+    expect(out[minIndex]).not.toBeNull()
+  })
+
+  it('keeps %K and %D within 0..100', () => {
+    const out = stochasticSeries(mk(60), 14, 3, 3)
+    for (const p of out) {
+      if (p === null) continue
+      expect(p.k).toBeGreaterThanOrEqual(0)
+      expect(p.k).toBeLessThanOrEqual(100)
+      expect(p.d).toBeGreaterThanOrEqual(0)
+      expect(p.d).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('agrees with the scalar stochastic() at the final bar', () => {
+    const candles = mk(60)
+    const series = stochasticSeries(candles, 14, 3, 3)
+    const last = series[series.length - 1]!
+    const scalar = stochastic(candles, 14, 3, 3)
+    expect(last.k).toBeCloseTo(scalar.k, 8)
+    expect(last.d).toBeCloseTo(scalar.d, 8)
   })
 })
