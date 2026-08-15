@@ -64,3 +64,30 @@ export function ema(
 
   return { value: currentEma, slope }
 }
+
+/**
+ * Per-bar EMA as a series aligned 1:1 with `candles`.
+ *
+ * Same SMA-seed + smoothing as `ema()`, but emits the EMA at every bar so it can be
+ * plotted as a line. Warmup bars (index < period-1) are `null` — there is no settled
+ * EMA yet, and a chart line simply starts at the first real value.
+ */
+export function emaSeries(candles: Candle[], period: number): (number | null)[] {
+  if (period < 1) {
+    throw new Error(`emaSeries: period must be >= 1, got ${period}`)
+  }
+  const out: (number | null)[] = new Array(candles.length).fill(null)
+  if (candles.length < period) return out
+
+  let sum = 0
+  for (let i = 0; i < period; i++) sum += candles[i]!.close
+  let prev = sum / period
+  out[period - 1] = prev
+
+  const k = 2 / (period + 1)
+  for (let i = period; i < candles.length; i++) {
+    prev = candles[i]!.close * k + prev * (1 - k)
+    out[i] = prev
+  }
+  return out
+}
