@@ -76,24 +76,54 @@ export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
     const dLine = chart.addSeries(LineSeries, { color: cssVar('--brand', '#c48a1a'), lineWidth: 1, priceLineVisible: false }, 1)
     dLine.setData(stochData.d.map((p) => ({ ...p, time: asUtc(p.time) })))
 
-    const markers = toSwingMarkers(candles, swingPoints(candles), { high: down, low: up }).map((m) => ({
-      ...m,
-      time: asUtc(m.time),
-    }))
-    createSeriesMarkers(candleSeries, markers)
+    const swings = swingPoints(candles)
+
+    /**
+     * Applies the current (fresh, re-read) theme colors to the chart chrome, every
+     * data series, and the swing markers. Called once on initial build and again
+     * from the MutationObserver whenever `data-theme` flips, so series colors never
+     * lag the chart background/grid.
+     */
+    const applyThemeColors = (): void => {
+      const themedUp = cssVar('--pass-fg', '#0b7a4a')
+      const themedDown = cssVar('--fail-fg', '#c0392b')
+      const themedInk2 = cssVar('--ink-2', '#545f6d')
+      const themedBrand = cssVar('--brand', '#c48a1a')
+      const themedBorder = cssVar('--border', '#d7dee7')
+      const themedSurface = cssVar('--surface', '#ffffff')
+
+      chart.applyOptions({
+        layout: { background: { color: themedSurface }, textColor: themedInk2 },
+        grid: { vertLines: { color: themedBorder }, horzLines: { color: themedBorder } },
+      })
+      candleSeries.applyOptions({
+        upColor: themedUp,
+        downColor: themedDown,
+        wickUpColor: themedUp,
+        wickDownColor: themedDown,
+      })
+      emaLine.applyOptions({ color: themedBrand })
+      kLine.applyOptions({ color: themedInk2 })
+      dLine.applyOptions({ color: themedBrand })
+      createSeriesMarkers(
+        candleSeries,
+        toSwingMarkers(candles, swings, { high: themedDown, low: themedUp }).map((m) => ({
+          ...m,
+          time: asUtc(m.time),
+        }))
+      )
+    }
+
+    createSeriesMarkers(
+      candleSeries,
+      toSwingMarkers(candles, swings, { high: down, low: up }).map((m) => ({ ...m, time: asUtc(m.time) }))
+    )
 
     chart.timeScale().fitContent()
 
     // Re-theme when the app flips data-theme (App mutates the attribute directly).
     const observer =
-      typeof MutationObserver !== 'undefined'
-        ? new MutationObserver(() => {
-            chart.applyOptions({
-              layout: { background: { color: cssVar('--surface', '#ffffff') }, textColor: cssVar('--ink-2', '#545f6d') },
-              grid: { vertLines: { color: cssVar('--border', '#d7dee7') }, horzLines: { color: cssVar('--border', '#d7dee7') } },
-            })
-          })
-        : null
+      typeof MutationObserver !== 'undefined' ? new MutationObserver(() => applyThemeColors()) : null
     observer?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
     return () => {

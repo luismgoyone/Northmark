@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { Candle } from '../types'
 
 // Vitest hoists `vi.mock` factories above other top-level statements; `vi.hoisted`
 // hoists these declarations alongside it so the factory can reference them
 // (plain `const` here would hit a TDZ ReferenceError since these names don't
 // match vitest's auto-hoist `mock*` prefix convention).
-const { removeMock, setDataMock, addSeriesMock, createChartMock } = vi.hoisted(() => {
+const { removeMock, setDataMock, addSeriesMock, createChartMock, createSeriesMarkersMock } = vi.hoisted(() => {
   const removeMock = vi.fn()
   const setDataMock = vi.fn()
   const addSeriesMock = vi.fn(() => ({ setData: setDataMock, applyOptions: vi.fn() }))
@@ -16,14 +16,15 @@ const { removeMock, setDataMock, addSeriesMock, createChartMock } = vi.hoisted((
     timeScale: () => ({ fitContent: vi.fn() }),
     remove: removeMock,
   }))
-  return { removeMock, setDataMock, addSeriesMock, createChartMock }
+  const createSeriesMarkersMock = vi.fn()
+  return { removeMock, setDataMock, addSeriesMock, createChartMock, createSeriesMarkersMock }
 })
 
 vi.mock('lightweight-charts', () => ({
   createChart: createChartMock,
   CandlestickSeries: 'Candlestick',
   LineSeries: 'Line',
-  createSeriesMarkers: vi.fn(),
+  createSeriesMarkers: createSeriesMarkersMock,
 }))
 
 import { PriceChart } from './PriceChart'
@@ -39,6 +40,12 @@ beforeEach(() => {
   addSeriesMock.mockClear()
   setDataMock.mockClear()
   removeMock.mockClear()
+  createSeriesMarkersMock.mockClear()
+  document.documentElement.removeAttribute('data-theme')
+})
+
+afterEach(() => {
+  document.documentElement.removeAttribute('data-theme')
 })
 
 describe('PriceChart', () => {
@@ -70,5 +77,37 @@ describe('PriceChart', () => {
     const { unmount } = render(<PriceChart {...props} />)
     unmount()
     expect(removeMock).toHaveBeenCalled()
+  })
+
+  it('re-themes candle, EMA, stochastic, and marker colors on light/dark toggle', async () => {
+    render(<PriceChart {...props} />)
+
+    // addSeries is called in order: candleSeries, emaLine, kLine, dLine.
+    const [candleSeries, emaLine, kLine, dLine] = addSeriesMock.mock.results.map((r) => r.value)
+    candleSeries.applyOptions.mockClear()
+    emaLine.applyOptions.mockClear()
+    kLine.applyOptions.mockClear()
+    dLine.applyOptions.mockClear()
+    createSeriesMarkersMock.mockClear()
+
+    document.documentElement.setAttribute('data-theme', 'dark')
+
+    await waitFor(() => {
+      expect(candleSeries.applyOptions).toHaveBeenCalled()
+    })
+    // Candle colors must be re-applied (upColor/downColor/wicks), not just chart chrome.
+    expect(candleSeries.applyOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        upColor: expect.any(String),
+        downColor: expect.any(String),
+        wickUpColor: expect.any(String),
+        wickDownColor: expect.any(String),
+      })
+    )
+    expect(emaLine.applyOptions).toHaveBeenCalledWith(expect.objectContaining({ color: expect.any(String) }))
+    expect(kLine.applyOptions).toHaveBeenCalledWith(expect.objectContaining({ color: expect.any(String) }))
+    expect(dLine.applyOptions).toHaveBeenCalledWith(expect.objectContaining({ color: expect.any(String) }))
+    // Swing markers are re-created with fresh theme colors on re-theme (initial + retheme).
+    expect(createSeriesMarkersMock).toHaveBeenCalledTimes(1)
   })
 })
