@@ -10,6 +10,7 @@ import { Score } from './ui/Score'
 import { TradeCard } from './ui/TradeCard'
 import { VetoList } from './ui/VetoList'
 import { Checklist } from './ui/Checklist'
+import { PriceChart } from './ui/PriceChart'
 
 /**
  * Phase-1 checklist state — HONEST.
@@ -177,6 +178,8 @@ export default function App(): ReactElement {
           signal assembly — level identification, structure, retest and confirmation — arrives in
           Phase 2, at which point the checklist and trade card fill with a real candidate setup.
         </p>
+
+        <PriceChart ctx={ctx} emaPeriod={config.ema.period} stoch={config.stoch} />
 
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
           <TradeCard setup={null} />

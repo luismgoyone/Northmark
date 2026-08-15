@@ -9,6 +9,20 @@ vi.mock('./hooks/useMarketData', () => ({
   useMarketData: () => mockUseMarketData(),
 }))
 
+// PriceChart uses the real `lightweight-charts` canvas library, which jsdom can't
+// render. Stub it the same way `src/ui/PriceChart.test.tsx` does.
+vi.mock('lightweight-charts', () => ({
+  createChart: vi.fn(() => ({
+    addSeries: vi.fn(() => ({ setData: vi.fn(), applyOptions: vi.fn() })),
+    applyOptions: vi.fn(),
+    timeScale: () => ({ fitContent: vi.fn() }),
+    remove: vi.fn(),
+  })),
+  CandlestickSeries: 'Candlestick',
+  LineSeries: 'Line',
+  createSeriesMarkers: vi.fn(),
+}))
+
 import App from './App'
 
 function candle(time: number, close: number): Candle {
@@ -52,13 +66,23 @@ test('populated: WAIT band, all-monitoring vetoes, pending trade card, Phase-2 n
   expect(screen.getByText(/never places orders/i)).toBeInTheDocument()
 })
 
-test('the only interactive control is the theme toggle — no buy/order/execute', () => {
+test('interactive controls are read-only (theme + chart timeframe) — no buy/order/execute', () => {
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
   expect(
     screen.queryByRole('button', { name: /buy|order|execute|place/i }),
   ).not.toBeInTheDocument()
   const buttons = screen.getAllByRole('button')
-  expect(buttons).toHaveLength(1)
-  expect(buttons[0]).toHaveAccessibleName(/theme/i)
+  // Theme toggle + the chart's M5/M15/H1 timeframe toggle — all read-only.
+  expect(buttons).toHaveLength(4)
+  expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'M15' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'H1' })).toBeInTheDocument()
+})
+
+it('renders the price chart with a timeframe toggle when data is loaded', () => {
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+  expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
 })
