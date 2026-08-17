@@ -134,9 +134,14 @@ revised `levelId`, `buffer = breakoutBufferPips × 0.01`, `band = level × retes
 3. `confirmIdx` = first `k > retestIdx` where `confirmation(c.slice(0,k+1), dir)` passes. None → WAIT@`confirmation`.
 4. Setup: `entry = c[last].close`, `sl = level` (structural — a close back through the level invalidates), `slDistance = entry − level`; `takeProfits`/`riskReward`/`positionSize` as before. Any veto → WAIT.
 
-The 8 gate-result rows are built by invoking the **unchanged** reviewed gates on window
-slices (`breakoutClose(c.slice(0,breakoutIdx+1), …)`, `retest(c.slice(0,retestIdx+1), …)`,
-`confirmation(c.slice(0,confirmIdx+1), …)`) so their semantics and prior reviews carry over.
+The breakout-close and confirmation rows are built by invoking the **unchanged** reviewed
+gates on window slices (`breakoutClose(c.slice(0,breakoutIdx+1), …)`,
+`confirmation(c.slice(0,confirmIdx+1), …)`) — both are last-bar evaluators, so the slice
+call reproduces the exact decision at that bar. The **retest row is synthesized inline**
+from the scan (not by calling the `retest` gate): the gate re-detects its own *unbuffered*
+breakout (`close > level`) whereas the scan uses the *buffered* breakout (`close > level +
+buffer`), so the two could pick different bars — building the row from the scan keeps the
+displayed status consistent with the decision actually made.
 `structure`, `bias`, `consolidation`, `breakoutClose`, `retest`, `confirmation`,
 `riskReward`, `risk` are **unchanged** by this addendum.
 

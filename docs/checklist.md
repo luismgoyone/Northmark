@@ -71,6 +71,14 @@ indicator thresholds.
 
 ### Core Decision Flow
 
+> **Implementation note (2026-08-17):** the engine implements this flow via the **temporal
+> narrative scan** — steps 4–6 ("identify level → close beyond → retest") are detected as a
+> completed sequence across the candle window, so by the confirmation bar the broken level
+> sits on the far side of price. See the design-spec addendum
+> (`docs/superpowers/specs/2026-08-17-northmark-phase2-design.md`, "Temporal narrative
+> model") for how `levelId`/`evaluateSetup` realize this. The steps below are the source
+> intent; the addendum governs the mechanics.
+
 1. Determine H1 directional bias.
 2. Confirm market structure.
 3. Check for consolidation.
