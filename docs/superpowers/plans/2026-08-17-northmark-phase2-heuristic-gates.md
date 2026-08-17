@@ -946,11 +946,11 @@ Assembles the required-gate sequence, demotes the score to a readout, and consum
 - Consumes: `bias` (T2.5), `structure` (T2.1), `consolidation` (T2.2), `levelId` (T2.0), `breakoutClose` (R1), `retest` (T2.3), `confirmation` (T2.4), `riskReward` (R2), `takeProfits`/`positionSize` (R3), `vetoes` (existing), `score` (modified); `MarketContext`, `Config`, `GateResult`, `Direction`.
 - Produces:
   - `score(gateResults, vetoes?): { passed: number; band: ScoreBand; authorized: boolean }` — `authorized` is `false` unless the caller passes an already-authorized set (see below); band logic unchanged.
-  - `evaluateSetup(ctx, config): SetupVerdict` where
+  - `evaluateSetup(ctx, config): SetupVerdict` where (authoritative definition — matches Step 5):
     ```ts
     export type SetupVerdict =
       | { status: 'wait'; blockedBy: string; direction: Direction | null; gates: GateResult[]; vetoes: GateResult[]; score: Score }
-      | { status: 'setup'; direction: Direction; level: number; gates: GateResult[]; vetoes: GateResult[]; score: Score }
+      | { status: 'setup'; direction: Direction; level: number; entry: number; sl: number; tp1: number; tp2: number; lot: number; gates: GateResult[]; vetoes: GateResult[]; score: Score }
     ```
 
 - [ ] **Step 1: Extend `score.ts` with `authorized`.** In `src/scoring/score.ts`, change the `Score` type and function:
