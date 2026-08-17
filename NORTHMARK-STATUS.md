@@ -7,14 +7,37 @@
 
 ## Current
 
-- **Phase:** 1 — Deterministic core ✅ **COMPLETE** (stopped at boundary for Luis' review)
-- **Wave:** 5 — UI done. All Phase-1 waves complete.
-- **Resume pointer:** **Phase 1 boundary — awaiting Luis.** 96 tests green, build passes.
-  Review the decision log + open flags below. Phase 2 (heuristic gates incl. level-ID) is
-  gated on Luis' go + the remaining checklist capture. Mockup:
-  https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
+- **Phase:** 2 — Heuristic gates + decision spine ✅ **COMPLETE** (stopped at boundary for Luis' review)
+- **Branch:** `feat/phase2-heuristic-gates` (cut from `feat/live-price-chart`).
+- **Resume pointer:** **Phase 2 boundary — awaiting Luis.** 165 tests green, typecheck clean,
+  build passes. All 6 gates + 3 retrofits + the `evaluateSetup` narrative spine + UI wire-in
+  are implemented and individually reviewed; final whole-branch review = "ready to merge with
+  fixes" (cheap fixes landed). **Two composition decisions + Tier-3 items below need Luis
+  before merge / Phase 3.**
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
+
+### Phase 2 boundary — decisions for Luis (from the final whole-branch review)
+
+1. **`market-structure` is redundant inside the sequence.** `bias` already derives direction
+   from H1 structure, then the `structure` gate re-checks the *same* H1 series — so it always
+   passes when bias passed (7 discriminating gates, not 8). Options: (a) evaluate `structure`
+   on **M15** (the id is `h1-m15-bias` but bias ignores M15 today) for a genuinely independent
+   confirmation; (b) accept + document it as an intentional overlap. **Not a correctness bug**
+   (bias-toward-WAIT holds). Luis' call.
+2. **`consolidation` is checked at "now", not "before the break".** The temporal refactor moved
+   the break/retest/confirm back into the window, but `consolidation` still inspects the latest
+   bars — so it acts as a "not currently chopping" filter, not the checklist's "consolidation
+   *before* the breakout". Options: (a) evaluate it on the **pre-breakout slice**
+   `c.slice(0, breakoutIdx)` for literal fidelity; (b) accept + rename/document as a current-chop
+   filter. Luis' call.
+3. **Re-cross invalidation rule** (a close back through the level after the retest but before
+   confirmation invalidates the setup) is a design-spec inference, **not verbatim** in Appendix A.
+   Confirm it matches your intent.
+4. **Confirmation "upper/lower third" threshold** (2/3, 1/3) — an invented numeric bound (now
+   tagged PROVISIONAL). Confirm thirds vs halves vs other before it's trusted live.
+
+Full context for each is in the decision log + Blocked/Tier-3 below.
 
 ## Backlog
 
@@ -46,14 +69,27 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.14 — UI components + App wiring (frontend; honest WAIT state, no-BUY test; 96 tests; build green)
 - [x] **Phase 1 boundary → STOPPED for Luis** (review packet below) ← YOU ARE HERE
 
-### Phase 2 — Heuristic gates (blocked on Task 0.5)
-- [ ] Task 2.1 — HH/HL / LH/LL structure
-- [ ] Task 2.2 — Consolidation detection
-- [ ] Task 2.3 — Retest interaction
-- [ ] Task 2.4 — Confirmation candle
-- [ ] Task 2.5 — Multi-timeframe bias
-- [ ] Task 2.6 — Wire heuristic gates into scoring
-- [ ] **Phase 2 boundary → STOP for Luis**
+### Phase 2 — Heuristic gates + decision spine ✅ COMPLETE (all reviewed)
+- [x] Task 0.5 — Verbatim 13-step checklist captured (unblocked Phase 2)
+- [x] Task 2.0T — `Direction` type + config reframe (structure-driven bounds)
+- [x] Task 2.1 — HH/HL / LH/LL structure gate
+- [x] Task 2.5 — H1 bias gate (emits Direction; EMA9 supports-not-overrides, tested)
+- [x] Task 2.0 — Level-ID gate (reworked → the *broken* level, temporal model)
+- [x] Task 2.2 — Structure-driven consolidation gate (guard fix + provisional tags)
+- [x] Task R1 — breakoutClose direction-aware + price-unit buffer (dropped PIP hack)
+- [x] Task 2.3 — Retest gate (holds broken level as new S/R; +short tests)
+- [x] Task 2.4 — Confirmation-candle gate (+short + edges)
+- [x] Task R2 — riskReward direction-aware
+- [x] Task R3 — risk.ts direction-aware TP + non-finite positionSize guard
+- [x] Task 2.6a — `evaluateSetup` sequence + `score.authorized` (reworked → narrative scan; hardened)
+- [x] Task 2.6b — UI wire-in (App consumes evaluateSetup; 8 honest checklist rows; no BUY)
+- [x] **Phase 2 boundary → STOPPED for Luis** (decisions above; final review clean) ← YOU ARE HERE
+
+**Mid-build design fix (Luis decision):** the original all-gates-on-the-last-candle model made
+a real `setup` structurally unreachable. Luis chose the **temporal narrative scan** — the
+break→retest→confirm sequence is detected across the window; the broken level sits behind price
+by the confirmation bar. `levelId` + `evaluateSetup` reworked accordingly; a full `setup` is now
+reachable and hand-verified. See the design-spec addendum.
 
 ### Phase 3 — Later, optional (needs Luis opt-in)
 - [ ] Task 3.1 — Continuous scanning + alerts (first real backend)
