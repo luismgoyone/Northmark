@@ -44,6 +44,53 @@ function fullNarrative(): Candle[] {
   ]
 }
 
+// Whipsaw variant: identical narrative up to the retest hold, but the FIRST bar after the
+// retest closes back BELOW the level (structural invalidation) before any confirmation candle
+// forms. `confirmation()` is shape-only and would happily pass the later bullish bar, so the
+// engine must reject the attempt here on its own (checklist: a re-cross invalidates the setup).
+// Index 8's high (2108) becomes a swing high once the whipsaw bar is inserted, but it sits
+// ABOVE the final close (2105) so `levelId` filters it out — H=2100 stays the only level.
+function whipsawNarrative(): Candle[] {
+  return [
+    bar(0, 2085, 2087, 2083, 2085), // warm-up
+    bar(1, 2088, 2090, 2086, 2088),
+    bar(2, 2090, 2095, 2088, 2093),
+    bar(3, 2095, 2100, 2093, 2098), // H: swing high 2100
+    bar(4, 2097, 2096, 2093, 2094),
+    bar(5, 2094, 2094, 2090, 2091),
+    bar(6, 2091, 2093, 2089, 2090),
+    bar(7, 2090, 2092, 2088, 2089),
+    bar(8, 2099, 2108, 2098, 2107), // breakout: close 2107 > 2100 + 0.20
+    bar(9, 2104, 2105, 2099.5, 2101), // retest: low touches band, close holds ≥ 2100
+    bar(10, 2101, 2103, 2097, 2098), // WHIPSAW: closes 2098 back BELOW level 2100 → invalidation
+    bar(11, 2098, 2109, 2097, 2107), // a bullish shape AFTER the re-cross — must be ignored
+    bar(12, 2107, 2108, 2104, 2105), // trailing
+  ]
+}
+
+// Pre-pivot variant: an early spike bar (index 0) CLOSES above level+buffer, but it happens
+// chronologically BEFORE the level's swing-high pivot (index 5) even exists — a resistance
+// cannot be broken before it forms. The coherent breakout is the LATER post-pivot bar
+// (index 9). The scan must be bounded to `levelPivotIdx+1`, so index 0 is never selected; a
+// naive scan-from-0 selects index 0 and derails into a phantom failed retest at index 1.
+function prePivotNarrative(): Candle[] {
+  return [
+    bar(0, 2100, 2102, 2099.5, 2101), // early spike: close 2101 > level+buffer, PRE-pivot
+    bar(1, 2099, 2099, 2096, 2097),
+    bar(2, 2096, 2097, 2093, 2094),
+    bar(3, 2094, 2096, 2092, 2093),
+    bar(4, 2093, 2095, 2091, 2092),
+    bar(5, 2095, 2100, 2093, 2098), // H: swing high 2100 (the level's pivot forms HERE)
+    bar(6, 2094, 2096, 2092, 2093),
+    bar(7, 2093, 2095, 2091, 2092),
+    bar(8, 2092, 2094, 2090, 2091),
+    bar(9, 2099, 2108, 2098, 2107), // real breakout: close 2107 > 2100 + 0.20, POST-pivot
+    bar(10, 2104, 2105, 2099.5, 2101), // retest: low touches band, close holds ≥ 2100
+    bar(11, 2101, 2109, 2100.5, 2107), // confirmation: bullish, closes in upper third
+    bar(12, 2107, 2108, 2104, 2105), // trailing
+  ]
+}
+
 describe('evaluateSetup', () => {
   it('waits and names the first failing gate when H1 bias is unclear', () => {
     const v = evaluateSetup(ctxAll(rangeSeries()), defaultConfig)
@@ -108,6 +155,46 @@ describe('evaluateSetup', () => {
       expect(v.entry).toBeGreaterThan(v.sl)
       expect(v.lot).toBeGreaterThan(0)
       expect(v.score.authorized).toBe(true)
+    }
+  })
+
+  it('rejects a whipsaw: price closing back through the level after the retest invalidates the setup', () => {
+    const h1 = trendSeries('up', 6)
+    const m5 = whipsawNarrative()
+    const cfg = defaultConfig
+
+    // Same level as the full-setup fixture; the retest still HELD before the re-cross.
+    const { level } = levelId(m5, 'long')
+    expect(level).toBe(2100)
+
+    const v = evaluateSetup({ m5, m15: m5, h1 }, cfg)
+    expect(v.status).toBe('wait')
+    if (v.status === 'wait') {
+      expect(v.blockedBy).toBe('confirmation')
+      // The retest genuinely held — this is a post-retest invalidation, not a missing retest.
+      expect(v.gates.find((g) => g.id === 'retest')?.status).toBe('pass')
+      expect(v.gates.find((g) => g.id === 'confirmation')?.status).toBe('wait')
+    }
+  })
+
+  it('bounds the breakout scan after the level pivot: a pre-pivot spike above the level is not the breakout', () => {
+    const h1 = trendSeries('up', 6)
+    const m5 = prePivotNarrative()
+    const cfg = defaultConfig
+
+    // The level is the swing high at index 5; the spike at index 0 predates it.
+    const { level } = levelId(m5, 'long')
+    expect(level).toBe(2100)
+
+    const v = evaluateSetup({ m5, m15: m5, h1 }, cfg)
+    // Resolving to `setup` proves the early pre-pivot spike (index 0) was NOT selected as the
+    // breakout — had it been, the retest scan would start at index 1 and fail immediately
+    // (index 1 closes 2097 < level), returning wait@retest instead of the real post-pivot setup.
+    expect(v.status).toBe('setup')
+    if (v.status === 'setup') {
+      expect(v.direction).toBe('long')
+      expect(v.sl).toBe(2100)
+      expect(v.entry).toBeGreaterThan(v.sl)
     }
   })
 })

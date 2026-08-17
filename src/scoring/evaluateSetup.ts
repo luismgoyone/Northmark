@@ -72,9 +72,25 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   const band = level * config.tolerances.retestBand
   const isLong = direction === 'long'
 
-  // 5. Breakout: first bar that CLOSED beyond level ± buffer.
+  // Bound the breakout scan to AFTER the level's pivot formed — a resistance/support cannot be
+  // broken before it exists. `level` came directly off a swing bar, so match it with `===`.
+  const { highs, lows } = swingPoints(c)
+  let levelPivotIdx = -1
+  const pivotIdxs = isLong ? highs : lows
+  for (let p = pivotIdxs.length - 1; p >= 0; p--) {
+    const idx = pivotIdxs[p]!
+    if ((isLong ? c[idx]!.high : c[idx]!.low) === level) {
+      levelPivotIdx = idx
+      break
+    }
+  }
+  // `level` always originates from a swing bar, so the pivot is expected to be found; if it
+  // somehow isn't, fall back to scanning the whole window (never silently skip a breakout).
+  const scanStart = levelPivotIdx >= 0 ? levelPivotIdx + 1 : 0
+
+  // 5. Breakout: first bar AFTER the level's pivot that CLOSED beyond level ± buffer.
   let breakoutIdx = -1
-  for (let i = 0; i < c.length; i++) {
+  for (let i = scanStart; i < c.length; i++) {
     const close = c[i]!.close
     if (isLong ? close > level + buffer : close < level - buffer) {
       breakoutIdx = i
@@ -124,9 +140,21 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
     return finish('retest', direction)
   }
 
-  // 7. Confirmation: first continuation candle after the retest.
+  // 7. Confirmation: first continuation candle after the retest. But a bar that CLOSES back
+  // through the level BEFORE any confirmation forms is a whipsaw — structural invalidation.
+  // `confirmation()` is shape-only (never checks price vs. level), so we guard it here and stop
+  // scanning at the re-cross rather than accept a later, now-irrelevant bullish/bearish shape.
   let confirmIdx = -1
   for (let k = retestIdx + 1; k < c.length; k++) {
+    const invalidated = isLong ? c[k]!.close < level : c[k]!.close > level
+    if (invalidated) {
+      results.set('confirmation', {
+        id: 'confirmation',
+        status: 'wait',
+        detail: `Price closed back through level ${level} at bar ${k} after the retest; setup invalidated.`,
+      })
+      return finish('confirmation', direction)
+    }
     if (confirmation(c.slice(0, k + 1), direction).status === 'pass') {
       confirmIdx = k
       break
