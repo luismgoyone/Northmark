@@ -12,4 +12,10 @@ describe('consolidation', () => {
   it('passes on a clean directional trend', () => {
     expect(consolidation(trendSeries('up', 6), defaultConfig).status).toBe('pass')
   })
+  it('returns wait (never throws) when the lookback window is shorter than the EMA period', () => {
+    const config = { ...defaultConfig, tolerances: { ...defaultConfig.tolerances, consolidationLookback: 5 } }
+    const candles = rangeSeries(20) // longer than the 5-bar lookback, shorter-than-period window
+    expect(() => consolidation(candles, config)).not.toThrow()
+    expect(consolidation(candles, config).status).toBe('wait')
+  })
 })

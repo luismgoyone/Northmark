@@ -13,11 +13,15 @@ import { ema } from '../indicators/ema'
 export function consolidation(candles: Candle[], config: Config): GateResult {
   const id = 'consolidation'
   const period = config.ema.period
-  if (candles.length < period) {
-    return { id, status: 'wait', detail: `Need ≥${period} candles to judge consolidation, got ${candles.length}.` }
+
+  // Guard on the SLICED window, not the raw feed: `ema(window, period)` needs `period`
+  // bars, and `consolidationLookback` is an UNVALIDATED tolerance that could be recalibrated
+  // below `ema.period`. Checking the window keeps this gate's always-resolves contract.
+  const window = candles.slice(-config.tolerances.consolidationLookback)
+  if (window.length < period) {
+    return { id, status: 'wait', detail: `Need ≥${period} candles in the lookback window to judge consolidation, got ${window.length}.` }
   }
 
-  const window = candles.slice(-config.tolerances.consolidationLookback)
   const highs = window.map((c) => c.high)
   const lows = window.map((c) => c.low)
   const closes = window.map((c) => c.close)
@@ -27,6 +31,9 @@ export function consolidation(candles: Candle[], config: Config): GateResult {
   if (span <= 0) return { id, status: 'fail', detail: 'Zero-span window: fully overlapping bars — consolidation.' }
 
   // 1. Overlapping bodies: closes occupy a small fraction of the full span.
+  // NOTE: 0.5 is a PROVISIONAL / UNVALIDATED heuristic bound (per the checklist's Critical
+  // Implementation Principle) pending Luis' calibration against real charts — same status as
+  // the `tolerances` in config.ts. Do not treat as a validated magic number.
   const closeSpan = Math.max(...closes) - Math.min(...closes)
   const overlapping = closeSpan / span < 0.5 // closes cluster within half the range
 
@@ -34,6 +41,8 @@ export function consolidation(candles: Candle[], config: Config): GateResult {
   const flat = ema(window, period).slope === 'flat'
 
   // 3. Mid-range: last close within the middle third of the span.
+  // NOTE: the 1/3–2/3 bounds are likewise PROVISIONAL / UNVALIDATED heuristic thresholds
+  // pending Luis' calibration against real charts — not validated magic numbers.
   const last = window[window.length - 1]!.close
   const pos = (last - bottom) / span
   const midRange = pos > 1 / 3 && pos < 2 / 3
