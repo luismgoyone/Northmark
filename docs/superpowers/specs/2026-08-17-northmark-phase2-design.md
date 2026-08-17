@@ -113,6 +113,33 @@ Every gate asserts the bias-toward-WAIT contract (never a false `pass`/`setup`).
 - Provisional `consolidationLookback` / buffer bounds remain UNVALIDATED until calibrated
   against past charts (Luis owns the calibration step before live signals are trusted).
 
+## Addendum (2026-08-17) — Temporal narrative model (Luis decision)
+
+Implementation of Task 2.6a surfaced a design flaw: with `levelId` returning the nearest
+swing high *above* the last close, `breakoutClose` (which needs the last close *above*
+level+buffer) can never pass on the same snapshot — so `status: 'setup'` was structurally
+unreachable. Luis chose the **temporal narrative scan** model to fix it.
+
+**Model:** a setup is a sequence detected *across the window over time*, not all-gates-true
+on the final candle. The broken level sits *below* current price by the confirmation bar.
+
+**`levelId` (revised) — the *broken* level:**
+- long: candidates = significant swing-high prices strictly **below** the last close; `level = max(candidates)` (the highest resistance price has already cleared). `wait` + null if none.
+- short: candidates = significant swing-low prices strictly **above** the last close; `level = min(candidates)`. `wait` + null if none.
+
+**`evaluateSetup` (revised) — narrative scan (long; short mirrors):** with `level` from the
+revised `levelId`, `buffer = breakoutBufferPips × 0.01`, `band = level × retestBand`:
+1. `breakoutIdx` = first `i` with `c[i].close > level + buffer` (clean close breakout). None → WAIT@`breakout-close`.
+2. `retestIdx` = first `j > breakoutIdx` with `c[j].low ≤ level + band` (returned): `c[j].close ≥ level` → hold (record `j`); `< level` → WAIT@`retest` (failed retest, first-touch decides). No touch → WAIT@`retest`.
+3. `confirmIdx` = first `k > retestIdx` where `confirmation(c.slice(0,k+1), dir)` passes. None → WAIT@`confirmation`.
+4. Setup: `entry = c[last].close`, `sl = level` (structural — a close back through the level invalidates), `slDistance = entry − level`; `takeProfits`/`riskReward`/`positionSize` as before. Any veto → WAIT.
+
+The 8 gate-result rows are built by invoking the **unchanged** reviewed gates on window
+slices (`breakoutClose(c.slice(0,breakoutIdx+1), …)`, `retest(c.slice(0,retestIdx+1), …)`,
+`confirmation(c.slice(0,confirmIdx+1), …)`) so their semantics and prior reviews carry over.
+`structure`, `bias`, `consolidation`, `breakoutClose`, `retest`, `confirmation`,
+`riskReward`, `risk` are **unchanged** by this addendum.
+
 ## Self-review
 
 - **Placeholders:** none unassigned. Provisional config bounds are explicitly tagged and
