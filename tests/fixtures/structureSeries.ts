@@ -49,6 +49,40 @@ export function trendSeries(direction: 'up' | 'down', legs = 4): Candle[] {
   return candles
 }
 
+/**
+ * A clean up-trend (HH+HL, so `structureDirection` reads `'long'`) that, after one more
+ * higher-high (~1060) and higher-low (~1050), plateaus at `tailPrice` for `tailCount`
+ * bars. The fresh HH/HL keep the detected swing structure unambiguously long; the flat
+ * tail then bends ONLY the short-term EMA9 slope, decoupled from structure:
+ *   - `tailPrice` at ~1050 (where EMA9 has settled) → EMA9 slope `flat`.
+ *   - `tailPrice` below ~1050 (e.g. 1044)            → EMA9 slope `falling`.
+ * This lets a test exercise the bias gate's "EMA9 supports but never overrides structure"
+ * rule: long structure must still emit long under a flat EMA9, and degrade to wait (never
+ * flip) under a strongly-opposing falling EMA9. Callers should assert the intended
+ * `structureDirection` / `ema` slope preconditions so the test proves which branch it hits.
+ */
+export function longTrendWithTail(tailPrice: number, tailCount = 3): Candle[] {
+  const candles = trendSeries('up')
+  const push = (center: number) => candles.push(bar(candles[candles.length - 1]!.time + 1, center))
+  // Two strictly-monotonic interpolated bars between pivots, mirroring trendSeries, so each
+  // new pivot has an unambiguous 2-bar window on both sides.
+  const ramp = (from: number, to: number) => {
+    push(from + (to - from) / 3)
+    push(from + (to - from) * (2 / 3))
+  }
+
+  const newHigh = 1060 // > prior swing high (~1044 close) → fresh HH
+  const newLow = 1050 //  > prior swing low  (~1040 close) → fresh HL
+  const prevClose = candles[candles.length - 1]!.close
+  ramp(prevClose, newHigh)
+  push(newHigh)
+  ramp(newHigh, newLow)
+  push(newLow)
+  for (let i = 0; i < tailCount; i++) push(tailPrice)
+
+  return candles
+}
+
 /** A flat, overlapping range: all bars share one center, no directional progression. */
 export function rangeSeries(count = 20): Candle[] {
   return Array.from({ length: count }, (_v, i) => bar(i, 1000, 3))
