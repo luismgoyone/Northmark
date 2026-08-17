@@ -16,6 +16,9 @@ export function confirmation(candles: Candle[], direction: Direction): GateResul
   if (range <= 0) return { id, status: 'wait', detail: 'Zero-range candle; no confirmation.' }
   const pos = (c.close - c.low) / range // 1 = closed at the high, 0 = at the low
 
+  // NOTE: the 2/3 (long) / 1/3 (short) range-position bounds are PROVISIONAL / UNVALIDATED
+  // heuristic thresholds pending Luis' calibration against real charts — not validated magic
+  // numbers.
   if (direction === 'long') {
     if (c.close > c.open && pos >= 2 / 3) return { id, status: 'pass', detail: `Bullish continuation: close ${c.close} > open ${c.open}, closed in upper third (${pos.toFixed(2)}).` }
     return { id, status: 'wait', detail: `No bullish confirmation (close>open=${c.close > c.open}, pos=${pos.toFixed(2)}).` }

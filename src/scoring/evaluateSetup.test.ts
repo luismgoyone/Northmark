@@ -47,7 +47,9 @@ function fullNarrative(): Candle[] {
 // Whipsaw variant: identical narrative up to the retest hold, but the FIRST bar after the
 // retest closes back BELOW the level (structural invalidation) before any confirmation candle
 // forms. `confirmation()` is shape-only and would happily pass the later bullish bar, so the
-// engine must reject the attempt here on its own (checklist: a re-cross invalidates the setup).
+// engine must reject the attempt here on its own (per the Phase 2 design-spec addendum, not
+// verbatim checklist.md: "a close back through the level invalidates" —
+// docs/superpowers/specs/2026-08-17-northmark-phase2-design.md).
 // Index 8's high (2108) becomes a swing high once the whipsaw bar is inserted, but it sits
 // ABOVE the final close (2105) so `levelId` filters it out — H=2100 stays the only level.
 function whipsawNarrative(): Candle[] {

@@ -34,6 +34,7 @@ export function positionSize(
  *
  *   long  → tp1 = entry + 1.0 * slDistance, tp2 = entry + 2.0 * slDistance
  *   short → tp1 = entry - 1.0 * slDistance, tp2 = entry - 2.0 * slDistance
+ *   (TP1 = 1.0R is a product-lead Tier-2 decision, not a checklist-derived value.)
  *
  * Structure overrides math: if `nextSR` is defined and sits closer than a
  * computed target, cap that target to `nextSR` (long: nextSR below target;
