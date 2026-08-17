@@ -1,12 +1,12 @@
-import type { Config, Direction, GateResult, MarketContext } from '../types'
+import type { Candle, Config, Direction, GateResult, MarketContext } from '../types'
 import { bias } from '../gates/bias'
 import { structure } from '../gates/structure'
 import { consolidation } from '../gates/consolidation'
 import { levelId } from '../gates/levelId'
 import { breakoutClose } from '../gates/breakoutClose'
-import { retest } from '../gates/retest'
 import { confirmation } from '../gates/confirmation'
 import { riskReward } from '../gates/riskReward'
+import { swingPoints } from '../indicators/swingPoints'
 import { positionSize, takeProfits } from './risk'
 import { vetoes } from './vetoes'
 import { score, type Score } from './score'
@@ -17,6 +17,17 @@ export type SetupVerdict =
 
 const WAIT = (id: string): GateResult => ({ id, status: 'wait', detail: 'Not evaluated — an earlier required gate did not pass.' })
 const ORDER = ['h1-m15-bias', 'market-structure', 'consolidation', 'level-id', 'breakout-close', 'retest', 'confirmation', 'risk-reward'] as const
+
+/** Nearest significant OPPOSING level beyond `entry`, for the structural TP cap (checklist step 11). */
+function opposingLevel(candles: Candle[], direction: Direction, entry: number): number | undefined {
+  const { highs, lows } = swingPoints(candles)
+  if (direction === 'long') {
+    const above = highs.map((i) => candles[i]!.high).filter((h) => h > entry)
+    return above.length ? Math.min(...above) : undefined
+  }
+  const below = lows.map((i) => candles[i]!.low).filter((l) => l < entry)
+  return below.length ? Math.max(...below) : undefined
+}
 
 /**
  * Required-gate sequence (checklist steps 1→9 & 14). Runs the gates in order and
@@ -54,34 +65,95 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   if (lvl.result.status !== 'pass' || lvl.level === null) return finish('level-id', direction)
   const level = lvl.level
 
-  // 5. Breakout close
-  const brk = breakoutClose(ctx.m5, level, direction, config)
-  results.set('breakout-close', brk)
-  if (brk.status !== 'pass') return finish('breakout-close', direction)
+  // Temporal narrative scan on M5 (checklist steps 5→9). The broken `level` sits on the far
+  // side of price now; detect the completed break → retest → confirm story across the window.
+  const c = ctx.m5
+  const buffer = config.tolerances.breakoutBufferPips * 0.01
+  const band = level * config.tolerances.retestBand
+  const isLong = direction === 'long'
 
-  // 6. Retest
-  const rt = retest(ctx.m5, level, direction, config)
-  results.set('retest', rt)
-  if (rt.status !== 'pass') return finish('retest', direction)
+  // 5. Breakout: first bar that CLOSED beyond level ± buffer.
+  let breakoutIdx = -1
+  for (let i = 0; i < c.length; i++) {
+    const close = c[i]!.close
+    if (isLong ? close > level + buffer : close < level - buffer) {
+      breakoutIdx = i
+      break
+    }
+  }
+  if (breakoutIdx === -1) {
+    results.set('breakout-close', {
+      id: 'breakout-close',
+      status: 'wait',
+      detail: `No candle has closed ${isLong ? 'above' : 'below'} level ${level} ${isLong ? '+' : '−'} buffer ${buffer} in the window.`,
+    })
+    return finish('breakout-close', direction)
+  }
+  results.set('breakout-close', breakoutClose(c.slice(0, breakoutIdx + 1), level, direction, config))
 
-  // 7. Confirmation
-  const cf = confirmation(ctx.m5, direction)
-  results.set('confirmation', cf)
-  if (cf.status !== 'pass') return finish('confirmation', direction)
+  // 6. Retest: first bar after the breakout that returned to the level; hold vs. fail by close.
+  let retestIdx = -1
+  for (let j = breakoutIdx + 1; j < c.length; j++) {
+    const bar = c[j]!
+    const touched = isLong ? bar.low <= level + band : bar.high >= level - band
+    if (!touched) continue
+    const held = isLong ? bar.close >= level : bar.close <= level
+    if (held) {
+      retestIdx = j
+      results.set('retest', {
+        id: 'retest',
+        status: 'pass',
+        detail: `Retest at bar ${j}: ${isLong ? `low ${bar.low}` : `high ${bar.high}`} touched band, close ${bar.close} held ${isLong ? '≥' : '≤'} level ${level}.`,
+      })
+      break
+    }
+    // First touch broke back through the level → failed retest.
+    results.set('retest', {
+      id: 'retest',
+      status: 'fail',
+      detail: `Failed retest at bar ${j}: close ${bar.close} fell back ${isLong ? 'below' : 'above'} level ${level}.`,
+    })
+    return finish('retest', direction)
+  }
+  if (retestIdx === -1) {
+    results.set('retest', {
+      id: 'retest',
+      status: 'wait',
+      detail: 'Breakout occurred but price has not returned to hold the level yet.',
+    })
+    return finish('retest', direction)
+  }
 
-  // 8. Risk:reward — entry = last close; SL = the broken level (structural); TP from R multiples.
-  const last = ctx.m5[ctx.m5.length - 1]!
-  const entry = last.close
+  // 7. Confirmation: first continuation candle after the retest.
+  let confirmIdx = -1
+  for (let k = retestIdx + 1; k < c.length; k++) {
+    if (confirmation(c.slice(0, k + 1), direction).status === 'pass') {
+      confirmIdx = k
+      break
+    }
+  }
+  if (confirmIdx === -1) {
+    results.set('confirmation', {
+      id: 'confirmation',
+      status: 'wait',
+      detail: 'Retest held but no confirmation candle in the breakout direction yet.',
+    })
+    return finish('confirmation', direction)
+  }
+  results.set('confirmation', confirmation(c.slice(0, confirmIdx + 1), direction))
+
+  // 8. Risk:reward — entry = latest close; SL = the broken level (structural invalidation).
+  const entry = c[c.length - 1]!.close
   const sl = level
   const slDistance = Math.abs(entry - sl)
-  const { tp1, tp2 } = takeProfits(entry, slDistance, direction)
+  const nextSR = opposingLevel(c, direction, entry)
+  const { tp1, tp2 } = takeProfits(entry, slDistance, direction, nextSR)
   const rr = riskReward(entry, sl, tp2, direction, config)
   results.set('risk-reward', rr)
   if (rr.status !== 'pass') return finish('risk-reward', direction)
 
   const gates = ORDER.map((id) => results.get(id)!)
-  const vetoed = vetoResults.some((v) => v.status === 'fail')
-  if (vetoed) return finish('veto', direction)
+  if (vetoResults.some((v) => v.status === 'fail')) return finish('veto', direction)
 
   const lot = positionSize(config.accountSize, config.riskPct, slDistance, config.contractSize)
   return { status: 'setup', direction, level, entry, sl, tp1, tp2, lot, gates, vetoes: vetoResults, score: score(gates, vetoResults, true) }

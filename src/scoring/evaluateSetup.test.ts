@@ -2,12 +2,46 @@ import { describe, expect, it } from 'vitest'
 import { evaluateSetup } from './evaluateSetup'
 import { defaultConfig } from '../config'
 import { rangeSeries, trendSeries } from '../../tests/fixtures/structureSeries'
+import { bias } from '../gates/bias'
+import { structure } from '../gates/structure'
+import { consolidation } from '../gates/consolidation'
+import { levelId } from '../gates/levelId'
 import type { Candle, MarketContext } from '../types'
 
 const ctxAll = (c: MarketContext['m5']): MarketContext => ({ m5: c, m15: c, h1: c })
 
 function bar(time: number, o: number, h: number, l: number, c: number): Candle {
   return { time, open: o, high: h, low: l, close: c }
+}
+
+// Hand-built long narrative: an extra warm-up bar (index 0, keeps the window ≥ the EMA9
+// period of 9 candles once truncated before the retest), a prior swing high H=2100 (index 3,
+// a genuine N=2 fractal — strictly greater than the highs of its two neighbors on each side),
+// then a bar that CLOSES above H+buffer (breakout, index 8), then a bar that dips back to
+// touch H's band and CLOSES ≥ H (retest hold, index 9), then a bullish candle closing in the
+// upper third of its range (confirmation, index 10). Index 8's high (2108) is deliberately
+// kept BELOW index 10's high (2109) so it can never itself qualify as a swing high
+// (disqualified by its right-hand neighbor), leaving H=2100 the only swing high below the
+// final close. One more trailing bar (index 11) follows confirmation — realistic ("now" is
+// later than the confirmation bar) and a genuine regression check: it is NOT itself bullish/
+// upper-third, so the OLD last-candle-only orchestration (which re-checks `confirmation` on
+// literally the newest bar) fails here, while the temporal scan correctly finds the completed
+// narrative earlier in the window regardless of what happens after it.
+function fullNarrative(): Candle[] {
+  return [
+    bar(0, 2085, 2087, 2083, 2085), // warm-up (keeps ≥9-bar windows valid when truncated)
+    bar(1, 2088, 2090, 2086, 2088),
+    bar(2, 2090, 2095, 2088, 2093),
+    bar(3, 2095, 2100, 2093, 2098), // H: swing high 2100
+    bar(4, 2097, 2096, 2093, 2094),
+    bar(5, 2094, 2094, 2090, 2091),
+    bar(6, 2091, 2093, 2089, 2090),
+    bar(7, 2090, 2092, 2088, 2089),
+    bar(8, 2099, 2108, 2098, 2107), // breakout: close 2107 > 2100 + 0.20
+    bar(9, 2104, 2105, 2099.5, 2101), // retest: low touches band, close holds ≥ 2100
+    bar(10, 2101, 2109, 2100.5, 2107), // confirmation: bullish, closes in upper third
+    bar(11, 2107, 2108, 2104, 2105), // trailing bar: NOT a confirmation candle (close<open)
+  ]
 }
 
 describe('evaluateSetup', () => {
@@ -17,10 +51,13 @@ describe('evaluateSetup', () => {
     if (v.status === 'wait') expect(v.blockedBy).toBe('h1-m15-bias')
   })
 
-  it('short-circuits: a clear bias but no breakout still waits, not setup', () => {
+  it('short-circuits: a clear bias but a monotonic trend that never pulls back to retest still waits, not setup', () => {
     const v = evaluateSetup(ctxAll(trendSeries('up', 6)), defaultConfig)
-    expect(v.status).toBe('wait') // later gates (breakout/retest/confirmation) not satisfied by a bare trend
+    expect(v.status).toBe('wait')
     expect(v.gates.some((g) => g.id === 'h1-m15-bias' && g.status === 'pass')).toBe(true)
+    // A clean staircase uptrend closes beyond an early broken level and never returns to
+    // hold its tight retest band again (each leg's pullback stays well above it).
+    if (v.status === 'wait') expect(v.blockedBy).toBe('retest')
   })
 
   it('always reports one GateResult per checklist row, in order', () => {
@@ -31,36 +68,46 @@ describe('evaluateSetup', () => {
     ])
   })
 
-  // Documented boundary finding (see task-2.6a-report.md "Escalation"): `level-id` and
-  // `breakout-close`/`retest`/`confirmation` all key off the SAME array's final candle.
-  // `level-id` (long) only accepts a swing high STRICTLY ABOVE the last close (a level not
-  // yet broken); `breakout-close` (long) only passes when the last close is ABOVE that same
-  // level. Those two requirements are mutually exclusive for one static candle array, so
-  // `evaluateSetup` cannot reach `status: 'setup'` on ANY constructible m5 fixture as
-  // currently composed — even a textbook base → breakout → retest → confirmation sequence
-  // (mirroring tests/fixtures/breakout-retest.json) lands back at `wait`, blocked at
-  // `level-id` or `breakout-close`, never at `setup`. This is a genuine composition gap in
-  // the required-gate sequence, not a fixture-construction failure — flagged for Luis, not
-  // fixed here (fixing it would mean changing level-id/breakout-close, out of scope for T2.6a).
-  it('cannot reach status "setup" on a textbook base->breakout->retest->confirm m5 series (documented composition gap)', () => {
-    const m5: Candle[] = []
-    let t = 0
-    // Base/consolidation: oscillate under a 2099 resistance (mirrors breakout-retest.json).
-    const baseCloses = [2095, 2097, 2093, 2096, 2094, 2098, 2092, 2095, 2099, 2093, 2096, 2094, 2097, 2092, 2095, 2098, 2092, 2096, 2094, 2097]
-    for (const c of baseCloses) m5.push(bar(t++, c, 2099, 2091, c))
-    m5.push(bar(t++, 2100, 2107, 2100, 2106)) // breakout: closes well above 2099 + buffer
-    m5.push(bar(t++, 2106, 2110, 2105, 2109)) // follow-through
-    m5.push(bar(t++, 2103, 2104, 2100, 2101)) // retest: pulls back to touch 2100, holds
-    m5.push(bar(t++, 2101, 2106, 2100.5, 2105)) // confirmation: bullish, closes in upper third
+  it('waits at "retest" when a breakout has occurred but price has not yet returned to hold the level', () => {
+    const m5 = fullNarrative().slice(0, 9) // through the breakout bar only, no retest bar yet
+    const h1 = trendSeries('up', 6)
+    const ctx: MarketContext = { m5, m15: m5, h1 }
 
-    // H1/M15 bias/structure: a clean uptrend so bias+structure pass, isolating the finding
-    // to level-id/breakout-close rather than an unrelated bias failure.
-    const ctx: MarketContext = { m5, m15: trendSeries('up', 6), h1: trendSeries('up', 6) }
+    // Preconditions: bias/structure pass on h1, consolidation/level-id pass on this m5 slice.
+    expect(bias(ctx, defaultConfig).direction).toBe('long')
+    expect(structure(h1, 'long').status).toBe('pass')
+    expect(consolidation(m5, defaultConfig).status).toBe('pass')
+    expect(levelId(m5, 'long').level).not.toBeNull()
 
     const v = evaluateSetup(ctx, defaultConfig)
     expect(v.status).toBe('wait')
     if (v.status === 'wait') {
-      expect(['level-id', 'breakout-close']).toContain(v.blockedBy)
+      expect(v.blockedBy).toBe('retest')
+      expect(v.gates.find((g) => g.id === 'breakout-close')?.status).toBe('pass')
+    }
+  })
+
+  it('detects the full breakout→retest→confirmation narrative and reaches status "setup" (long)', () => {
+    const h1 = trendSeries('up', 6)
+    const m5 = fullNarrative()
+    const cfg = defaultConfig
+
+    // Prove each precondition BEFORE asserting the setup, so this is non-vacuous.
+    expect(bias({ m5, m15: m5, h1 }, cfg).direction).toBe('long')
+    expect(structure(h1, 'long').status).toBe('pass')
+    expect(consolidation(m5, cfg).status).toBe('pass')
+    const { level } = levelId(m5, 'long')
+    expect(level).not.toBeNull()
+    expect(level).toBe(2100)
+
+    const v = evaluateSetup({ m5, m15: m5, h1 }, cfg)
+    expect(v.status).toBe('setup')
+    if (v.status === 'setup') {
+      expect(v.direction).toBe('long')
+      expect(v.sl).toBe(level)
+      expect(v.entry).toBeGreaterThan(v.sl)
+      expect(v.lot).toBeGreaterThan(0)
+      expect(v.score.authorized).toBe(true)
     }
   })
 })
