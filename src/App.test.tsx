@@ -51,17 +51,17 @@ test('error before any data renders an honest unavailable state, no numbers', ()
   expect(screen.getByText(/rate limited/)).toBeInTheDocument()
 })
 
-test('populated: WAIT band, all-monitoring vetoes, pending trade card, Phase-2 note', () => {
+test('populated: WAIT band, all-monitoring vetoes, pending trade card, live-signal note', () => {
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
-  // Honest WAIT signal (no gate can pass in Phase 1).
+  // Honest WAIT signal (a single candle can't pass the required-gate sequence).
   expect(screen.getByText('WAIT')).toBeInTheDocument()
   // Trade card is pending — no fabricated levels.
   expect(screen.getByText('Awaiting setup')).toBeInTheDocument()
   // Vetoes read calm.
   expect(screen.getByText(/0 active/)).toBeInTheDocument()
-  // The Phase-2 honesty note is visible.
-  expect(screen.getByText(/Phase 1 of 2/)).toBeInTheDocument()
+  // The live-signal-assembly note is visible.
+  expect(screen.getByText(/Live signal assembly is active/)).toBeInTheDocument()
   // The read-only disclaimer footer survives.
   expect(screen.getByText(/never places orders/i)).toBeInTheDocument()
 })

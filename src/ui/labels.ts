@@ -12,8 +12,12 @@ import { VETO_CATALOGUE } from '../scoring/vetoes'
 export type GateDef = { id: string; name: string }
 
 /**
- * The 10 checklist gates in process order (bias → structure → break → retest →
- * confirm → risk), matching docs/ui-spec.md §2 and the source checklist.
+ * The 8 required checklist gates in process order (bias → structure → break →
+ * retest → confirm → risk), matching docs/ui-spec.md §2 and the source
+ * checklist. EMA9 and stochastic are not standalone required gates in the
+ * verbatim strategy — EMA9 folds into bias/consolidation and stochastic isn't
+ * in the 13-step doc at all — so both stay visible only in the PriceChart
+ * panel, not here.
  */
 export const PHASE1_GATES: GateDef[] = [
   { id: 'h1-m15-bias', name: 'H1 / M15 bias' },
@@ -23,8 +27,6 @@ export const PHASE1_GATES: GateDef[] = [
   { id: 'breakout-close', name: 'Breakout close (not wick)' },
   { id: 'retest', name: 'Retest of level' },
   { id: 'confirmation', name: 'Confirmation candle' },
-  { id: 'ema9', name: 'Price above rising EMA9' },
-  { id: 'stochastic', name: 'Stochastic turning up' },
   { id: 'risk-reward', name: 'Reward : Risk ≥ 1.5' },
 ]
 
