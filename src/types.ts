@@ -2,6 +2,8 @@ export type Candle = { time: number; open: number; high: number; low: number; cl
 
 export type GateStatus = 'pass' | 'fail' | 'wait'
 
+export type Direction = 'long' | 'short'
+
 export type GateResult = { id: string; status: GateStatus; detail: string }
 
 export type MarketContext = { m5: Candle[]; m15: Candle[]; h1: Candle[] }
