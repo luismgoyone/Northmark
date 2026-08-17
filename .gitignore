@@ -22,3 +22,6 @@ npm-debug.log*
 
 # test / coverage
 coverage
+
+# Superpowers SDD scratch (ledger, briefs, reports)
+.superpowers/
