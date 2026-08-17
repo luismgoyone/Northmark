@@ -1,55 +1,31 @@
-import type { Candle, Config, GateResult } from '../types'
+import type { Candle, Config, Direction, GateResult } from '../types'
+
+/** XAUUSD pip→price: 0.01 per pip (checklist Section A). Buffer stays in PRICE units. */
+const PRICE_PER_PIP = 0.01
 
 /**
- * XAUUSD pip→dollar convention pending Luis confirmation (see NORTHMARK-STATUS decision log).
- * For now: 1 pip = $0.10 on XAUUSD, so a `breakoutBufferPips` of 20 = a $2.00 buffer.
+ * Breakout-close gate (checklist step 5). A breakout counts ONLY when the last candle
+ * *closes* beyond `level ± buffer`. A wick beyond with a close back inside = failed breakout.
+ *   long:  close > level + buffer → pass;  high > level, close ≤ level+buffer → fail
+ *   short: close < level − buffer → pass;  low  < level, close ≥ level−buffer → fail
+ * `buffer` is a price-unit distance from config (breakoutBufferPips × 0.01), never dollars.
  */
-const PIP = 0.1
-
-/**
- * Breakout-close gate (MVP §4, high-value fidelity point).
- *
- * A breakout counts ONLY when the last M5 candle *closes* above `level + buffer`.
- * A wick above the level with a close at/below it is NOT a breakout — it's a failed
- * attempt. `level` is supplied by the caller (level identification is a Phase-2
- * Judgment gate), not detected here.
- *
- *  - last close  >  level + buffer                 → pass  (clean breakout)
- *  - last high   >  level  but close ≤ level+buffer → fail  (wick-only / failed breakout)
- *  - last high   ≤  level                           → wait  (no breakout attempt)
- *
- * Bias toward `wait` when there is nothing to evaluate — never a false `pass`.
- */
-export function breakoutClose(candles: Candle[], level: number, config: Config): GateResult {
+export function breakoutClose(candles: Candle[], level: number, direction: Direction, config: Config): GateResult {
   const id = 'breakout-close'
   const last = candles[candles.length - 1]
+  if (!last) return { id, status: 'wait', detail: 'No candles supplied; cannot evaluate breakout.' }
 
-  if (!last) {
-    return { id, status: 'wait', detail: 'No candles supplied; cannot evaluate breakout.' }
+  const buffer = config.tolerances.breakoutBufferPips * PRICE_PER_PIP
+
+  if (direction === 'long') {
+    const threshold = level + buffer
+    if (last.close > threshold) return { id, status: 'pass', detail: `Close ${last.close} > level ${level} + buffer ${buffer}: clean long breakout.` }
+    if (last.high > level) return { id, status: 'fail', detail: `High ${last.high} pierced ${level} but close ${last.close} ≤ ${threshold}: wick-only, failed breakout.` }
+    return { id, status: 'wait', detail: `High ${last.high} ≤ level ${level}: no long breakout attempt.` }
   }
 
-  const buffer = config.tolerances.breakoutBufferPips * PIP
-  const threshold = level + buffer
-
-  if (last.close > threshold) {
-    return {
-      id,
-      status: 'pass',
-      detail: `Close ${last.close} > level ${level} + buffer ${buffer} (threshold ${threshold}): clean breakout.`,
-    }
-  }
-
-  if (last.high > level) {
-    return {
-      id,
-      status: 'fail',
-      detail: `High ${last.high} pierced level ${level} but close ${last.close} ≤ threshold ${threshold} (level + buffer ${buffer}): wick-only, failed breakout.`,
-    }
-  }
-
-  return {
-    id,
-    status: 'wait',
-    detail: `High ${last.high} ≤ level ${level}: no breakout attempt (close ${last.close}, buffer ${buffer}).`,
-  }
+  const threshold = level - buffer
+  if (last.close < threshold) return { id, status: 'pass', detail: `Close ${last.close} < level ${level} − buffer ${buffer}: clean short breakout.` }
+  if (last.low < level) return { id, status: 'fail', detail: `Low ${last.low} pierced ${level} but close ${last.close} ≥ ${threshold}: wick-only, failed breakout.` }
+  return { id, status: 'wait', detail: `Low ${last.low} ≥ level ${level}: no short breakout attempt.` }
 }
