@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { MarketContext } from '../types'
-import { fetchCandles } from '../data/twelveData'
+import type { Candle, MarketContext } from '../types'
+import { fetchCandles, type Timeframe } from '../data/twelveData'
 
 /**
  * useMarketData — the ONLY impure bridge between the pure engine and React.
@@ -18,11 +18,14 @@ import { fetchCandles } from '../data/twelveData'
  *   screen: the last good `ctx` is retained so the trader keeps seeing real numbers.
  * - `ctx` is `null` until the first successful load.
  *
- * Polling alignment (MVP): candles only matter once an M5 bar has closed, so the first
- * tick is scheduled at the next M5 wall-clock boundary, after which we poll every 5
- * minutes. This is a deliberately simple approximation — a plain interval anchored to
- * the boundary. Exact close-aligned scheduling (accounting for provider publish lag and
- * interval drift) can be refined later without changing this hook's public shape.
+ * Polling alignment (MVP): a bar only matters once it has closed, and each timeframe
+ * closes on its own clock — an H1 bar changes once an hour, an M15 bar every 15 minutes.
+ * Refetching all three on the M5 cadence spends ~864 Twelve-Data credits/day (over the
+ * 800/day free-tier cap) to re-download H1/M15 bars that have not changed. Instead each
+ * timeframe is polled on *its own* aligned cadence (M5→5m, M15→15m, H1→60m), which cuts
+ * steady state to ~408 credits/day and keeps the per-minute burst well under the 8/min
+ * cap. Exact close-aligned scheduling (provider publish lag, interval drift) can be
+ * refined later without changing this hook's public shape.
  */
 
 export type UseMarketData = {
@@ -31,13 +34,20 @@ export type UseMarketData = {
   error: Error | null
 }
 
-/** One M5 bar in milliseconds — the poll cadence and the boundary we align to. */
-const M5_MS = 5 * 60 * 1000
+/** Per-timeframe poll cadence (ms) — also the wall-clock boundary each is aligned to. */
+const PERIOD_MS: Record<Timeframe, number> = {
+  M5: 5 * 60 * 1000,
+  M15: 15 * 60 * 1000,
+  H1: 60 * 60 * 1000,
+}
 
-/** Milliseconds from `now` until the next M5 wall-clock boundary (never 0, always the *next* one). */
-function msUntilNextM5Boundary(now: number): number {
-  const remainder = now % M5_MS
-  return remainder === 0 ? M5_MS : M5_MS - remainder
+/** The three timeframes the engine reasons over, in fetch order. */
+const TIMEFRAMES: Timeframe[] = ['M5', 'M15', 'H1']
+
+/** Milliseconds from `now` until the next `period` wall-clock boundary (never 0, always the *next* one). */
+function msUntilNextBoundary(now: number, period: number): number {
+  const remainder = now % period
+  return remainder === 0 ? period : period - remainder
 }
 
 export function useMarketData(): UseMarketData {
@@ -49,43 +59,55 @@ export function useMarketData(): UseMarketData {
     // Guards against setState after unmount: a fetch may still be in flight, or a timer
     // may fire, after React has torn the component down.
     let active = true
-    let pollInterval: ReturnType<typeof setInterval> | undefined
+    const timers: ReturnType<typeof setTimeout>[] = []
+    // Latest candles per timeframe. `ctx` is only published once all three are present,
+    // then each subsequent per-timeframe fetch updates just its own slice.
+    const latest: Partial<Record<Timeframe, Candle[]>> = {}
 
-    async function load(): Promise<void> {
+    function publish(): void {
+      const { M5, M15, H1 } = latest
+      if (M5 && M15 && H1) setCtx({ m5: M5, m15: M15, h1: H1 })
+    }
+
+    async function loadOne(tf: Timeframe): Promise<void> {
       try {
-        const [m5, m15, h1] = await Promise.all([
-          fetchCandles('M5'),
-          fetchCandles('M15'),
-          fetchCandles('H1'),
-        ])
+        const candles = await fetchCandles(tf)
         if (!active) return
-        setCtx({ m5, m15, h1 })
+        latest[tf] = candles
         setError(null)
+        publish()
       } catch (err) {
         if (!active) return
         // Keep the last good `ctx` — a failed refresh must not blank the screen.
         setError(err instanceof Error ? err : new Error(String(err)))
-      } finally {
-        if (active) setLoading(false)
       }
     }
 
-    // Fetch immediately so the screen fills as fast as possible...
-    void load()
+    // Fetch all three immediately so the screen fills as fast as possible...
+    void Promise.all(TIMEFRAMES.map(loadOne)).finally(() => {
+      if (active) setLoading(false)
+    })
 
-    // ...then align the recurring poll to the M5 close boundary.
-    const boundaryTimeout = setTimeout(() => {
-      if (!active) return
-      void load()
-      pollInterval = setInterval(() => {
-        void load()
-      }, M5_MS)
-    }, msUntilNextM5Boundary(Date.now()))
+    // ...then poll each timeframe on its own boundary-aligned cadence.
+    for (const tf of TIMEFRAMES) {
+      const period = PERIOD_MS[tf]
+      const boundaryTimeout = setTimeout(() => {
+        if (!active) return
+        void loadOne(tf)
+        const pollInterval = setInterval(() => {
+          void loadOne(tf)
+        }, period)
+        timers.push(pollInterval)
+      }, msUntilNextBoundary(Date.now(), period))
+      timers.push(boundaryTimeout)
+    }
 
     return () => {
       active = false
-      clearTimeout(boundaryTimeout)
-      if (pollInterval !== undefined) clearInterval(pollInterval)
+      for (const t of timers) {
+        clearTimeout(t)
+        clearInterval(t)
+      }
     }
   }, [])
 
