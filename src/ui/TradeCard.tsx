@@ -54,7 +54,8 @@ function CardShell({
 /**
  * The read-only trade card (docs/ui-spec.md §2/§3): an R:R ladder hero + a
  * 7-field metric grid. Two honest states:
- *   - `setup: null`  → pending "awaiting setup". NEVER fabricated numbers.
+ *   - `setup: null`  → pending "awaiting setup" until every required gate
+ *                      passes. NEVER fabricated numbers.
  *   - populated      → real Entry/SL/TP1/TP2/Lot/Risk$/R:R, marked Provisional
  *                      while still building or when R:R is below the minimum.
  */
@@ -68,8 +69,8 @@ export function TradeCard({ setup }: { setup: TradeSetup | null }): ReactElement
           <StatusIcon status="wait" size={44} />
           <div className="text-[14px] font-semibold text-ink">Awaiting setup</div>
           <p className="m-0 max-w-[42ch] text-[12.5px] text-ink-2">
-            No entry, stop, or targets are shown until a real candidate setup is assembled.
-            Live signal assembly (level identification) arrives in Phase 2.
+            No entry, stop, or targets are shown until every required gate passes. The card fills
+            automatically when a real candidate setup forms.
           </p>
         </div>
       </CardShell>

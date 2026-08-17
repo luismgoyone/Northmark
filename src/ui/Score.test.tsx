@@ -16,6 +16,7 @@ test('wait band renders the WAIT lozenge and the passed/total count', () => {
       score={{ passed: 2, band: 'wait', authorized: false }}
       gates={gatesWith(2)}
       verdict="Holding."
+      total={10}
     />,
   )
   expect(screen.getByText('WAIT')).toBeInTheDocument()

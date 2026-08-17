@@ -18,7 +18,7 @@ const setup: TradeSetup = {
 test('pending state shows an honest empty state, never fabricated numbers', () => {
   render(<TradeCard setup={null} />)
   expect(screen.getByText('Awaiting setup')).toBeInTheDocument()
-  expect(screen.getByText(/Phase 2/)).toBeInTheDocument()
+  expect(screen.getByText(/until every required gate passes/)).toBeInTheDocument()
   // No price-shaped values in the pending state.
   expect(screen.queryByText(/2,4\d\d\.\d\d/)).not.toBeInTheDocument()
 })
