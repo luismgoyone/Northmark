@@ -69,7 +69,7 @@ export function StatusIcon({
       className={`grid place-items-center rounded-[7px] ${STATUS_TONE[status].chip} ${className}`}
       style={{ width: size, height: size, flex: 'none' }}
     >
-      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none">
+      <svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24" fill="none" stroke="currentColor">
         {glyph(status)}
       </svg>
     </span>
@@ -105,7 +105,7 @@ export function StatusChip({
     <span
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-chip px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.04em] ${STATUS_TONE[status].chip} ${className}`}
     >
-      <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <svg aria-hidden="true" width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor">
         {glyph(status)}
       </svg>
       {STATUS_LABEL[status]}
