@@ -72,7 +72,7 @@ function Header({
   return (
     <header className="flex flex-wrap items-center gap-4 px-0.5 pb-[18px] pt-1.5">
       <div className="mr-auto flex items-center gap-[11px]">
-        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" aria-hidden="true">
           <circle cx="16" cy="16" r="14.5" stroke="var(--border-strong)" strokeWidth="1" />
           <path d="M16 3.5 L19 16 L16 28.5 L13 16 Z" fill="var(--brand)" />
           <path d="M3.5 16 L16 13.4 L28.5 16 L16 18.6 Z" fill="var(--ink-3)" opacity="0.5" />
@@ -91,7 +91,7 @@ function Header({
       )}
 
       <span className="inline-flex items-center gap-1.5 rounded-chip border border-border bg-surface-sunken px-[11px] py-[5px] text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-2">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
           <rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
           <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2" />
         </svg>
@@ -106,7 +106,7 @@ function Header({
         aria-label="Toggle light or dark theme"
         className="grid h-[34px] w-[34px] place-items-center rounded-[9px] border border-border bg-surface text-ink-2 hover:border-border-strong hover:text-ink"
       >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
           <path
             d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
             stroke="currentColor"

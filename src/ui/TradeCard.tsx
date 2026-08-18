@@ -101,7 +101,7 @@ export function TradeCard({ setup }: { setup: TradeSetup | null }): ReactElement
       <div className="px-[18px] pb-5 pt-4">
         {provisional && (
           <span className="mb-[15px] inline-flex items-center gap-1.5 rounded-lg border border-build-bd bg-build-bg px-2.5 py-1.5 text-[12px] font-semibold text-build-fg">
-            <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none">
+            <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={2} />
               <path
                 d="M12 8v4l2.5 2.5"
@@ -159,7 +159,7 @@ export function TradeCard({ setup }: { setup: TradeSetup | null }): ReactElement
             </div>
             {rrBelowMin && (
               <span className="mt-[3px] inline-flex items-center gap-1.5 text-[11px] text-fail-fg">
-                <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none">
+                <svg aria-hidden="true" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path
                     d="M12 3 2 21h20L12 3Z"
                     stroke="currentColor"

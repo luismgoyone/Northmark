@@ -17,5 +17,19 @@ module.exports = {
       'error',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
     ],
+    // An <svg fill="none"> is drawn with strokes, so it MUST declare a stroke color
+    // (usually stroke="currentColor"). Without one, stroke-based glyphs paint
+    // invisibly — only the box shows. This bug bit the score lozenge and every
+    // shared status icon; the guard makes it un-mergeable. (Harmless on fill-only
+    // svgs: a stroke with no stroke-drawn children simply does nothing.)
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector:
+          "JSXOpeningElement[name.name='svg']:has(JSXAttribute[name.name='fill'][value.value='none']):not(:has(JSXAttribute[name.name='stroke']))",
+        message:
+          'An <svg fill="none"> must also set a stroke color (e.g. stroke="currentColor"), or stroke-based glyphs render invisibly.',
+      },
+    ],
   },
 }
