@@ -50,12 +50,14 @@ function msUntilNextBoundary(now: number, period: number): number {
   return remainder === 0 ? period : period - remainder
 }
 
-export function useMarketData(): UseMarketData {
+export function useMarketData(enabled: boolean = true): UseMarketData {
   const [ctx, setCtx] = useState<MarketContext | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
+    if (!enabled) return
+
     // Guards against setState after unmount: a fetch may still be in flight, or a timer
     // may fire, after React has torn the component down.
     let active = true
@@ -109,7 +111,7 @@ export function useMarketData(): UseMarketData {
         clearInterval(t)
       }
     }
-  }, [])
+  }, [enabled])
 
   return { ctx, loading, error }
 }
