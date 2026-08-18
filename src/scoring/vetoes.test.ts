@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { Candle, Config, MarketContext } from '../types'
+import type { GateResult } from '../types'
 import { vetoes, VETO_CATALOGUE } from './vetoes'
 import { defaultConfig } from '../config'
 
-// Minimal, valid MarketContext. Vetoes are ALL deferred in Phase 1, so the
-// candle contents are irrelevant — empty arrays exercise the real code path.
-const emptyCtx: MarketContext = { m5: [], m15: [], h1: [] }
-const config: Config = defaultConfig
+const config = defaultConfig
 
 // The 18 NO-TRADE veto conditions, verbatim from docs/checklist.md.
 // NOTE the checklist correction: "EMA20 strongly disagrees" means EMA9.
@@ -69,50 +66,171 @@ describe('VETO_CATALOGUE', () => {
   })
 })
 
+// The ordered 8-gate sequence evaluateSetup builds, per checklist steps 1-9 & 14.
+const GATE_ORDER = [
+  'h1-m15-bias',
+  'market-structure',
+  'consolidation',
+  'level-id',
+  'breakout-close',
+  'retest',
+  'confirmation',
+  'risk-reward',
+] as const
+
+// The 7 wired vetoes and the gate id each projects from.
+const WIRED = {
+  'h1-bias-unclear': 'h1-m15-bias',
+  consolidating: 'consolidation',
+  'no-meaningful-sr': 'level-id',
+  'breakout-unconfirmed': 'breakout-close',
+  'retest-missing': 'retest',
+  'weak-confirmation': 'confirmation',
+  'rr-insufficient': 'risk-reward',
+} as const
+
+const DEFERRED_IDS = VETO_CATALOGUE.map((v) => v.id).filter(
+  (id) => !(id in WIRED),
+)
+
+/** Build a full ordered 8-gate array, all 'pass' except overrides. */
+function gatesWith(overrides: Partial<Record<(typeof GATE_ORDER)[number], GateResult['status']>>): GateResult[] {
+  return GATE_ORDER.map((id) => ({
+    id,
+    status: overrides[id] ?? 'pass',
+    detail: `stub for ${id}`,
+  }))
+}
+
+function statusById(results: GateResult[]): Map<string, GateResult['status']> {
+  return new Map(results.map((r) => [r.id, r.status]))
+}
+
 describe('vetoes()', () => {
-  it('(c) returns one GateResult per catalogue entry (18)', () => {
-    expect(vetoes(emptyCtx, config)).toHaveLength(VETO_CATALOGUE.length)
+  it('returns one GateResult per catalogue entry (18), in catalogue order', () => {
+    const results = vetoes(gatesWith({}), config)
+    expect(results).toHaveLength(18)
+    expect(results.map((r) => r.id)).toEqual(VETO_CATALOGUE.map((v) => v.id))
   })
 
-  it('(c) Phase 1: ALL results are wait — none pass (nothing falsely cleared)', () => {
-    for (const r of vetoes(emptyCtx, config)) {
-      expect(r.status).toBe('wait')
+  it('all gates pass → all 7 wired vetoes pass, 11 deferred wait, 0 fail', () => {
+    const results = vetoes(gatesWith({}), config)
+    const byId = statusById(results)
+
+    for (const vetoId of Object.keys(WIRED)) {
+      expect(byId.get(vetoId)).toBe('pass')
+    }
+    for (const vetoId of DEFERRED_IDS) {
+      expect(byId.get(vetoId)).toBe('wait')
+    }
+    expect(results.filter((r) => r.status === 'fail')).toHaveLength(0)
+  })
+
+  it('bias is the blocker → h1-bias-unclear fails, the other 6 wired vetoes wait (not reached), deferred wait', () => {
+    const gates = gatesWith({
+      'h1-m15-bias': 'wait',
+      'market-structure': 'wait',
+      consolidation: 'wait',
+      'level-id': 'wait',
+      'breakout-close': 'wait',
+      retest: 'wait',
+      confirmation: 'wait',
+      'risk-reward': 'wait',
+    })
+    const results = vetoes(gates, config)
+    const byId = statusById(results)
+
+    expect(byId.get('h1-bias-unclear')).toBe('fail')
+    for (const vetoId of Object.keys(WIRED)) {
+      if (vetoId === 'h1-bias-unclear') continue
+      expect(byId.get(vetoId)).toBe('wait')
+    }
+    for (const vetoId of DEFERRED_IDS) {
+      expect(byId.get(vetoId)).toBe('wait')
+    }
+    expect(results.filter((r) => r.status === 'fail')).toHaveLength(1)
+  })
+
+  it('risk-reward is the blocker → rr-insufficient fails, the other 6 wired vetoes are cleared (pass), deferred wait', () => {
+    const gates = gatesWith({ 'risk-reward': 'fail' })
+    const results = vetoes(gates, config)
+    const byId = statusById(results)
+
+    expect(byId.get('rr-insufficient')).toBe('fail')
+    for (const vetoId of Object.keys(WIRED)) {
+      if (vetoId === 'rr-insufficient') continue
+      expect(byId.get(vetoId)).toBe('pass')
+    }
+    for (const vetoId of DEFERRED_IDS) {
+      expect(byId.get(vetoId)).toBe('wait')
+    }
+    expect(results.filter((r) => r.status === 'fail')).toHaveLength(1)
+  })
+
+  it('consolidation is the blocker → consolidating fails; bias-veto is cleared (bias passed); downstream wired wait', () => {
+    const gates = gatesWith({
+      consolidation: 'wait',
+      'level-id': 'wait',
+      'breakout-close': 'wait',
+      retest: 'wait',
+      confirmation: 'wait',
+      'risk-reward': 'wait',
+    })
+    const results = vetoes(gates, config)
+    const byId = statusById(results)
+
+    expect(byId.get('consolidating')).toBe('fail')
+    expect(byId.get('h1-bias-unclear')).toBe('pass') // bias gate (index 0) passed, before the blocker
+    for (const vetoId of ['no-meaningful-sr', 'breakout-unconfirmed', 'retest-missing', 'weak-confirmation', 'rr-insufficient']) {
+      expect(byId.get(vetoId)).toBe('wait')
+    }
+    for (const vetoId of DEFERRED_IDS) {
+      expect(byId.get(vetoId)).toBe('wait')
+    }
+    expect(results.filter((r) => r.status === 'fail')).toHaveLength(1)
+  })
+
+  it('deferred vetoes never return fail, regardless of gate outcomes', () => {
+    const scenarios: GateResult[][] = [
+      gatesWith({}),
+      gatesWith({ 'h1-m15-bias': 'wait' }),
+      gatesWith({ 'risk-reward': 'fail' }),
+      gatesWith({ consolidation: 'fail' }),
+      gatesWith({ 'market-structure': 'fail' }),
+    ]
+    for (const gates of scenarios) {
+      const results = vetoes(gates, config)
+      for (const vetoId of DEFERRED_IDS) {
+        const r = results.find((x) => x.id === vetoId)!
+        expect(r.status).not.toBe('fail')
+      }
     }
   })
 
-  it('(c) Phase 1: NONE fail and NONE pass', () => {
-    const statuses = vetoes(emptyCtx, config).map((r) => r.status)
-    expect(statuses).not.toContain('pass')
-    expect(statuses).not.toContain('fail')
-  })
-
-  it('(d) every result detail starts with "deferred:"', () => {
-    for (const r of vetoes(emptyCtx, config)) {
-      expect(r.detail.startsWith('deferred:')).toBe(true)
+  it('deferred external-data vetoes give an honest "needs live broker/session data" detail', () => {
+    const results = vetoes(gatesWith({}), config)
+    for (const id of ['spread-abnormal', 'news-filter', 'daily-loss-limit', 'consecutive-loss-limit']) {
+      const r = results.find((x) => x.id === id)!
+      expect(r.detail).toBe('Needs live broker/session data (not available locally).')
     }
   })
 
-  it('result ids line up 1:1 with the catalogue ids', () => {
-    const resultIds = vetoes(emptyCtx, config).map((r) => r.id)
-    const catalogueIds = VETO_CATALOGUE.map((v) => v.id)
-    expect(resultIds).toEqual(catalogueIds)
-  })
-
-  it('deferral detail names the availability phase', () => {
-    const byId = new Map(vetoes(emptyCtx, config).map((r) => [r.id, r]))
-    for (const spec of VETO_CATALOGUE) {
-      expect(byId.get(spec.id)?.detail).toContain(spec.availability)
+  it('deferred non-wired vetoes give an honest "not independently wired yet" detail', () => {
+    const results = vetoes(gatesWith({}), config)
+    for (const id of ['mid-range', 'ema9-disagrees', 'price-extended', 'entry-chasing', 'volatility-abnormal', 'sl-illogical', 'tp-too-close']) {
+      const r = results.find((x) => x.id === id)!
+      expect(r.detail).toBe(
+        'Not independently wired yet — the required-gate checklist covers the current setup state.',
+      )
     }
   })
 
-  it('does not read from the candle arrays (pure, content-independent)', () => {
-    const populated: MarketContext = {
-      m5: [{ time: 0, open: 1, high: 2, low: 0.5, close: 1.5 } as Candle],
-      m15: [],
-      h1: [],
+  it('no deferred detail mentions the stale "Phase 1" wording', () => {
+    const results = vetoes(gatesWith({}), config)
+    for (const vetoId of DEFERRED_IDS) {
+      const r = results.find((x) => x.id === vetoId)!
+      expect(r.detail.toLowerCase()).not.toContain('phase 1')
+      expect(r.detail).not.toContain('deferred:')
     }
-    expect(vetoes(populated, config).map((r) => r.status)).toEqual(
-      vetoes(emptyCtx, config).map((r) => r.status),
-    )
   })
 })

@@ -36,10 +36,10 @@ function opposingLevel(candles: Candle[], direction: Direction, entry: number): 
  * Any firing veto forces WAIT regardless of the sequence.
  */
 export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict {
-  const vetoResults = vetoes(ctx, config)
   const results = new Map<string, GateResult>()
   const finish = (blockedBy: string, direction: Direction | null): SetupVerdict => {
     const gates = ORDER.map((id) => results.get(id) ?? WAIT(id))
+    const vetoResults = vetoes(gates, config)
     return { status: 'wait', blockedBy, direction, gates, vetoes: vetoResults, score: score(gates, vetoResults, false) }
   }
 
@@ -190,6 +190,7 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   if (rr.status !== 'pass') return finish('risk-reward', direction)
 
   const gates = ORDER.map((id) => results.get(id)!)
+  const vetoResults = vetoes(gates, config)
   if (vetoResults.some((v) => v.status === 'fail')) return finish('veto', direction)
 
   const lot = positionSize(config.accountSize, config.riskPct, slDistance, config.contractSize)
