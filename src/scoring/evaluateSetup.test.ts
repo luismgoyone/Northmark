@@ -100,6 +100,14 @@ describe('evaluateSetup', () => {
     if (v.status === 'wait') expect(v.blockedBy).toBe('h1-m15-bias')
   })
 
+  it('a bias-blocked verdict has exactly one fail veto: h1-bias-unclear', () => {
+    const v = evaluateSetup(ctxAll(rangeSeries()), defaultConfig)
+    expect(v.status).toBe('wait')
+    const failing = v.vetoes.filter((veto) => veto.status === 'fail')
+    expect(failing).toHaveLength(1)
+    expect(failing[0]?.id).toBe('h1-bias-unclear')
+  })
+
   it('short-circuits: a clear bias but a monotonic trend that never pulls back to retest still waits, not setup', () => {
     const v = evaluateSetup(ctxAll(trendSeries('up', 6)), defaultConfig)
     expect(v.status).toBe('wait')
@@ -160,6 +168,9 @@ describe('evaluateSetup', () => {
       expect(v.entry).toBeGreaterThan(v.sl)
       expect(v.lot).toBeGreaterThan(0)
       expect(v.score.authorized).toBe(true)
+      // An authorized setup passed every required gate, so no wired veto can be the active
+      // blocker — zero vetoes fire.
+      expect(v.vetoes.filter((veto) => veto.status === 'fail')).toHaveLength(0)
     }
   })
 

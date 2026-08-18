@@ -1,4 +1,4 @@
-import type { Config, GateResult, MarketContext } from '../types'
+import type { Config, GateResult } from '../types'
 
 // Pure module, no I/O. Import direction is downward only (types).
 //
@@ -10,14 +10,17 @@ import type { Config, GateResult, MarketContext } from '../types'
 // 'fail'):
 //   - triggered NO-TRADE condition   → status 'fail' (hard block)
 //   - evaluated & NOT triggered       → status 'pass'
-//   - deferred / not-evaluable-yet    → status 'wait', detail "deferred: <availability> — <reason>"
+//   - not independently evaluable yet → status 'wait', with an honest detail
 //
-// Phase 1 reality: NONE of these 18 can be honestly evaluated at this signature.
-// Most need heuristic gates not yet built (phase-2), data the local MVP cannot
-// see (phase-3), or a candidate setup (entry/sl/tp) not assembled here yet
-// (phase-1-wiring). So every veto is DEFERRED: returned as 'wait' with a
-// deferral detail. Emitting 'pass' would falsely read as "cleared" — that is a
-// false green on a real-money block, so we bias to WAIT.
+// Phase 2 reality: 7 of the 18 conditions are a direct PROJECTION of the
+// ordered 8-gate required sequence evaluateSetup already computes (bias,
+// structure, consolidation, level-id, breakout-close, retest, confirmation,
+// risk-reward) — see WIRED_VETOES below. The remaining 11 are still not
+// independently evaluable: 4 need live broker/session data this local MVP
+// cannot see (phase-3), and 7 need heuristic gates or setup data not yet
+// wired (phase-2 / phase-1-wiring). Those 11 stay 'wait'. Emitting 'pass' for
+// something not actually checked would falsely read as "cleared" — a false
+// green on a real-money block — so we bias to WAIT.
 
 /** When a veto becomes evaluable. Drives the deferral reason in Phase 1. */
 export type VetoAvailability = 'phase-1-wiring' | 'phase-2' | 'phase-3'
@@ -55,30 +58,107 @@ export const VETO_CATALOGUE: VetoSpec[] = [
   { id: 'entry-chasing', label: 'Entry would be chasing', availability: 'phase-2' },
 ]
 
-/** Human-readable reason each availability class is not yet evaluable in Phase 1. */
-const DEFERRAL_REASON: Record<VetoAvailability, string> = {
-  'phase-1-wiring':
-    'needs a candidate setup (entry/sl/tp) wired in; not assembled at this signature yet',
-  'phase-2': 'needs a heuristic gate not yet built',
-  'phase-3': 'needs data the local MVP cannot see yet',
+/**
+ * The 7 wired vetoes: each is a direct PROJECTION of one gate in the ordered
+ * 8-gate required sequence (checklist steps 1-9 & 14, `evaluateSetup`'s
+ * `ORDER`). Maps veto id → the gate id it derives its status from.
+ */
+const WIRED_VETOES: Record<string, string> = {
+  'h1-bias-unclear': 'h1-m15-bias',
+  consolidating: 'consolidation',
+  'no-meaningful-sr': 'level-id',
+  'breakout-unconfirmed': 'breakout-close',
+  'retest-missing': 'retest',
+  'weak-confirmation': 'confirmation',
+  'rr-insufficient': 'risk-reward',
+}
+
+/** The 4 deferred vetoes that need live broker/session data this local MVP cannot see (phase-3). */
+const EXTERNAL_DATA_VETOES = new Set([
+  'spread-abnormal',
+  'news-filter',
+  'daily-loss-limit',
+  'consecutive-loss-limit',
+])
+
+const EXTERNAL_DATA_DETAIL = 'Needs live broker/session data (not available locally).'
+const NOT_WIRED_DETAIL =
+  'Not independently wired yet — the required-gate checklist covers the current setup state.'
+
+/**
+ * Detail string for a FIRED ('fail') wired veto. Usually the catalogue label, but
+ * `h1-bias-unclear` needs a special case: `bias.ts` returns the `h1-m15-bias` gate as
+ * not-pass for TWO distinct reasons — unclear H1 structure OR EMA9 strongly disagreeing —
+ * so claiming specifically "H1 direction is unclear" would be factually wrong in the EMA9
+ * case (and the dedicated `ema9-disagrees` veto stays deferred). Distinguishing them
+ * cleanly would require changing bias.ts (out of scope), so we soften the fired detail to
+ * be accurate for both. The catalogue id/label are unchanged.
+ */
+function firedDetail(spec: VetoSpec): string {
+  if (spec.id === 'h1-bias-unclear') {
+    return 'H1 bias not confirmed — unclear structure or EMA9 disagreement.'
+  }
+  return `${spec.label} is the active no-trade condition.`
 }
 
 /**
- * Evaluate the NO-TRADE vetoes for the current market context.
+ * Evaluate the NO-TRADE vetoes as a projection of the ordered 8-gate required
+ * sequence (`gates`, in checklist step order: h1-m15-bias, market-structure,
+ * consolidation, level-id, breakout-close, retest, confirmation, risk-reward
+ * — the exact array `evaluateSetup` builds).
  *
- * Returns one `GateResult` per catalogue entry (1:1, in catalogue order). In
- * Phase 1 every veto is DEFERRED — status 'wait' with a "deferred: …" detail —
- * because none can be honestly evaluated yet. No result is 'pass' (which would
- * falsely read as "cleared") and none is 'fail'. The enumeration is complete so
- * the catalogue is never silently short a condition.
+ * Returns one `GateResult` per catalogue entry (1:1, in catalogue order).
  *
- * `ctx` and `config` are accepted to lock the signature that later phases fill
- * in; Phase 1 does not read the candle arrays (nothing to evaluate).
+ * For the 7 WIRED vetoes (see `WIRED_VETOES`), each derives its status from
+ * its mapped gate's position relative to the first non-'pass' gate
+ * (`blockIdx`, or -1 when every gate passed — an authorized setup):
+ *   - blockIdx === -1, or the mapped gate's index < blockIdx (it already
+ *     passed)              → 'pass' (cleared)
+ *   - the mapped gate IS the active blocker (index === blockIdx)
+ *                           → 'fail' (triggered NO-TRADE condition)
+ *   - the mapped gate has not been reached yet (index > blockIdx)
+ *                           → 'wait' (monitoring)
+ *
+ * The remaining 11 vetoes are not independently evaluable yet and always
+ * return 'wait' — never 'fail' — with an honest reason: the 4 external-data
+ * conditions need live broker/session data; the other 7 are not yet wired to
+ * their own check (the required-gate sequence covers the current setup
+ * state in the meantime). Emitting 'pass' for something not actually
+ * checked would falsely read as "cleared" — a false green on a real-money
+ * block — so these stay WAIT, never PASS or FAIL.
  */
-export function vetoes(_ctx: MarketContext, _config: Config): GateResult[] {
-  return VETO_CATALOGUE.map((spec) => ({
-    id: spec.id,
-    status: 'wait',
-    detail: `deferred: ${spec.availability} — ${DEFERRAL_REASON[spec.availability]} (${spec.label}).`,
-  }))
+export function vetoes(gates: GateResult[], _config: Config): GateResult[] {
+  const blockIdx = gates.findIndex((g) => g.status !== 'pass')
+
+  return VETO_CATALOGUE.map((spec) => {
+    const gateId = WIRED_VETOES[spec.id]
+    if (gateId !== undefined) {
+      const gi = gates.findIndex((g) => g.id === gateId)
+      // No-false-clear guard: if the mapped gate id doesn't match anything in the
+      // array (typo / refactor / short array), `gi` is -1 and `-1 < blockIdx` would
+      // silently mark this veto 'pass' — a false clear on a real-money block, the one
+      // thing we must never emit. Bias to WAIT instead, never 'pass'/'fail'.
+      if (gi === -1) {
+        return {
+          id: spec.id,
+          status: 'wait',
+          detail: `Unmapped gate "${gateId}" — not evaluated.`,
+        }
+      }
+      if (blockIdx === -1 || gi < blockIdx) {
+        return { id: spec.id, status: 'pass', detail: `Cleared: ${gateId} passed.` }
+      }
+      if (gi === blockIdx) {
+        return { id: spec.id, status: 'fail', detail: firedDetail(spec) }
+      }
+      return {
+        id: spec.id,
+        status: 'wait',
+        detail: 'Monitoring — an earlier required gate is still unresolved.',
+      }
+    }
+
+    const detail = EXTERNAL_DATA_VETOES.has(spec.id) ? EXTERNAL_DATA_DETAIL : NOT_WIRED_DETAIL
+    return { id: spec.id, status: 'wait', detail }
+  })
 }
