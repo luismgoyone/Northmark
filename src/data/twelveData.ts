@@ -23,9 +23,6 @@ const INTERVAL: Record<Timeframe, string> = {
 /** How many bars to request per timeframe. Enough history to seed EMA9/stochastic. */
 const OUTPUT_SIZE = 200
 
-const SYMBOL = 'XAU/USD'
-const BASE_URL = 'https://api.twelvedata.com/time_series'
-
 /** Raw shape of a single value row in a successful Twelve Data response. */
 type TwelveDataValue = {
   datetime: string
@@ -51,23 +48,14 @@ type TwelveDataResponse =
  * The returned array is sorted **ascending by time** (oldest first, newest last),
  * the opposite of the provider's newest-first ordering.
  *
- * @throws if `VITE_TWELVEDATA_KEY` is missing/empty (we never fetch with an empty key),
- *         or if Twelve Data returns an error payload (`status: 'error'`).
+ * Fetches go through the same-origin `/api/candles` proxy so the Twelve Data API key
+ * stays server-side and never ships in the client bundle.
+ *
+ * @throws if Twelve Data returns an error payload (`status: 'error'`).
  */
 export async function fetchCandles(tf: Timeframe): Promise<Candle[]> {
-  const apikey = import.meta.env.VITE_TWELVEDATA_KEY
-  if (!apikey || apikey.trim() === '') {
-    throw new Error(
-      'Missing VITE_TWELVEDATA_KEY: set the Twelve Data API key in .env.local before fetching candles.',
-    )
-  }
-
   const interval = INTERVAL[tf]
-  const url =
-    `${BASE_URL}?symbol=${SYMBOL}` +
-    `&interval=${interval}` +
-    `&outputsize=${OUTPUT_SIZE}` +
-    `&apikey=${apikey}`
+  const url = `/api/candles?interval=${interval}&outputsize=${OUTPUT_SIZE}`
 
   const response = await fetch(url)
   const payload = (await response.json()) as TwelveDataResponse

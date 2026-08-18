@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Candle } from '../types'
 import { fetchCandles } from './twelveData'
 
@@ -26,15 +26,6 @@ function stubFetch(payload: unknown) {
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
-
-/** Set (or clear) the Twelve Data API key on import.meta.env for a test. */
-function setKey(key: string | undefined) {
-  vi.stubEnv('VITE_TWELVEDATA_KEY', key as string)
-}
-
-beforeEach(() => {
-  setKey('test-key-123')
-})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -78,35 +69,33 @@ describe('fetchCandles', () => {
     expect(candles[0]!.time).toBeGreaterThan(1e12) // ms magnitude, not seconds
   })
 
-  it('maps H1 to interval=1h in the request URL', async () => {
+  it('maps H1 to interval=1h and fetches the same-origin proxy (no key on the client)', async () => {
     const fetchMock = stubFetch(successPayload())
 
     await fetchCandles('H1')
 
     const url = String(fetchMock.mock.calls[0]![0])
+    expect(url).toContain('/api/candles')
     expect(url).toContain('interval=1h')
-    expect(url).toContain('symbol=XAU/USD')
-    expect(url).toContain('apikey=test-key-123')
+    expect(url).not.toContain('apikey=')
   })
 
   it('maps M5 to interval=5min in the request URL', async () => {
     const fetchMock = stubFetch(successPayload())
     await fetchCandles('M5')
-    expect(String(fetchMock.mock.calls[0]![0])).toContain('interval=5min')
+    const url = String(fetchMock.mock.calls[0]![0])
+    expect(url).toContain('/api/candles')
+    expect(url).toContain('interval=5min')
+    expect(url).not.toContain('apikey=')
   })
 
   it('maps M15 to interval=15min in the request URL', async () => {
     const fetchMock = stubFetch(successPayload())
     await fetchCandles('M15')
-    expect(String(fetchMock.mock.calls[0]![0])).toContain('interval=15min')
-  })
-
-  it('throws when the API key is missing (never fetches with an empty key)', async () => {
-    setKey('')
-    const fetchMock = stubFetch(successPayload())
-
-    await expect(fetchCandles('M5')).rejects.toThrow(/VITE_TWELVEDATA_KEY/)
-    expect(fetchMock).not.toHaveBeenCalled()
+    const url = String(fetchMock.mock.calls[0]![0])
+    expect(url).toContain('/api/candles')
+    expect(url).toContain('interval=15min')
+    expect(url).not.toContain('apikey=')
   })
 
   it('throws with the provider message on a Twelve Data error payload', async () => {
