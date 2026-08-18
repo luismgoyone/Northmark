@@ -86,6 +86,22 @@ const NOT_WIRED_DETAIL =
   'Not independently wired yet — the required-gate checklist covers the current setup state.'
 
 /**
+ * Detail string for a FIRED ('fail') wired veto. Usually the catalogue label, but
+ * `h1-bias-unclear` needs a special case: `bias.ts` returns the `h1-m15-bias` gate as
+ * not-pass for TWO distinct reasons — unclear H1 structure OR EMA9 strongly disagreeing —
+ * so claiming specifically "H1 direction is unclear" would be factually wrong in the EMA9
+ * case (and the dedicated `ema9-disagrees` veto stays deferred). Distinguishing them
+ * cleanly would require changing bias.ts (out of scope), so we soften the fired detail to
+ * be accurate for both. The catalogue id/label are unchanged.
+ */
+function firedDetail(spec: VetoSpec): string {
+  if (spec.id === 'h1-bias-unclear') {
+    return 'H1 bias not confirmed — unclear structure or EMA9 disagreement.'
+  }
+  return `${spec.label} is the active no-trade condition.`
+}
+
+/**
  * Evaluate the NO-TRADE vetoes as a projection of the ordered 8-gate required
  * sequence (`gates`, in checklist step order: h1-m15-bias, market-structure,
  * consolidation, level-id, breakout-close, retest, confirmation, risk-reward
@@ -118,15 +134,22 @@ export function vetoes(gates: GateResult[], _config: Config): GateResult[] {
     const gateId = WIRED_VETOES[spec.id]
     if (gateId !== undefined) {
       const gi = gates.findIndex((g) => g.id === gateId)
+      // No-false-clear guard: if the mapped gate id doesn't match anything in the
+      // array (typo / refactor / short array), `gi` is -1 and `-1 < blockIdx` would
+      // silently mark this veto 'pass' — a false clear on a real-money block, the one
+      // thing we must never emit. Bias to WAIT instead, never 'pass'/'fail'.
+      if (gi === -1) {
+        return {
+          id: spec.id,
+          status: 'wait',
+          detail: `Unmapped gate "${gateId}" — not evaluated.`,
+        }
+      }
       if (blockIdx === -1 || gi < blockIdx) {
         return { id: spec.id, status: 'pass', detail: `Cleared: ${gateId} passed.` }
       }
       if (gi === blockIdx) {
-        return {
-          id: spec.id,
-          status: 'fail',
-          detail: `${spec.label} is the active no-trade condition.`,
-        }
+        return { id: spec.id, status: 'fail', detail: firedDetail(spec) }
       }
       return {
         id: spec.id,
