@@ -34,7 +34,7 @@ export function structure(candles: Candle[], direction: Direction): GateResult {
   const id = 'market-structure'
   const detected = structureDirection(candles)
   if (detected === direction) {
-    return { id, status: 'pass', detail: `H1 structure confirms ${direction} (2+ ${direction === 'long' ? 'HH+HL' : 'LH+LL'}).` }
+    return { id, status: 'pass', detail: `Structure confirms ${direction} (2+ ${direction === 'long' ? 'HH+HL' : 'LH+LL'}).` }
   }
-  return { id, status: 'wait', detail: `H1 structure is ${detected ?? 'unclear'}, not the candidate ${direction}. No trade.` }
+  return { id, status: 'wait', detail: `Structure is ${detected ?? 'unclear'}, not the candidate ${direction}. No trade.` }
 }
