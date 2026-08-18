@@ -145,6 +145,23 @@ displayed status consistent with the decision actually made.
 `structure`, `bias`, `consolidation`, `breakoutClose`, `retest`, `confirmation`,
 `riskReward`, `risk` are **unchanged** by this addendum.
 
+## Addendum 2 (2026-08-17) — Phase 2 boundary decisions (Luis)
+
+After the final whole-branch review, two composition findings were decided by Luis:
+
+1. **`market-structure` gate evaluates on M15, not H1.** `bias` already derives `direction`
+   from H1 structure, so re-checking H1 in the structure gate was tautological (it could
+   never fail). The gate now runs `structure(ctx.m15, direction)` — H1 sets the primary bias,
+   M15 independently confirms the same directional structure, so a divergent M15 structure
+   correctly blocks. This supersedes the "on H1" wording in the plan's Task 2.1 and the
+   `structure(ctx.h1, …)` call in Task 2.6 Step 5. `bias` stays H1-only. The `structure` gate
+   is timeframe-agnostic (takes any candle array); its detail text is timeframe-neutral.
+2. **`consolidation` stays a current-chop filter (checked at "now").** It verifies price is not
+   ranging AT THE ENTRY MOMENT — the literal reading of checklist step 3 ("avoid initiating
+   trades inside clear consolidation"). It is NOT moved to the pre-breakout slice: a base→breakout
+   is a *valid* pattern, so a pre-break "consolidation present" must not block. A base-before-
+   breakout quality check would be a separate, inverted-polarity gate — deferred to Phase 2.5.
+
 ## Self-review
 
 - **Placeholders:** none unassigned. Provisional config bounds are explicitly tagged and
