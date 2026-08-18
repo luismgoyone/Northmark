@@ -195,7 +195,7 @@ export default function App(): ReactElement {
 
         {mode !== 'live' && <DemoBanner onExit={() => setMode('live')} />}
 
-        {error && (
+        {mode === 'live' && error && (
           <div className="mb-4 rounded-panel border border-fail-bd bg-fail-bg px-4 py-2.5 text-[12.5px] text-fail-fg">
             Live refresh failed ({error.message}). Showing the last good data.
           </div>

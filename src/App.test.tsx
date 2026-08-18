@@ -111,6 +111,25 @@ test('selecting a demo preset shows the DEMO banner and a populated trade card, 
   expect(screen.queryByText(/Live signal assembly is active/)).not.toBeInTheDocument()
 })
 
+test('a live refresh error banner never shows in demo mode (error state is stale, not live)', () => {
+  // Live had a good ctx then a refresh failed: hook still holds that error. This mirrors
+  // reality — the hook's early-return in disabled mode does NOT clear `error`, so App must
+  // gate the red banner on live mode itself, not on the (stale) error state.
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: new Error('rate limited') })
+  render(<App />)
+  // In live mode the honest refresh-failed banner is present.
+  expect(screen.getByText(/Live refresh failed/)).toBeInTheDocument()
+  expect(screen.getByText(/Showing the last good data/)).toBeInTheDocument()
+
+  fireEvent.change(screen.getByLabelText('Data source'), { target: { value: 'demo-setup' } })
+
+  // Demo state must not contradict itself: amber DEMO banner shows, and the red live-error
+  // banner is gone even though the stale error is still in hook state.
+  expect(screen.getByText(/DEMO DATA/i)).toBeInTheDocument()
+  expect(screen.queryByText(/Live refresh failed/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Showing the last good data/)).not.toBeInTheDocument()
+})
+
 test('switching back to Live from a demo preset removes the banner', () => {
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
