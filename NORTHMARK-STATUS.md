@@ -9,35 +9,36 @@
 
 - **Phase:** 2 — Heuristic gates + decision spine ✅ **COMPLETE** (stopped at boundary for Luis' review)
 - **Branch:** `feat/phase2-heuristic-gates` (cut from `feat/live-price-chart`).
-- **Resume pointer:** **Phase 2 boundary — awaiting Luis.** 165 tests green, typecheck clean,
-  build passes. All 6 gates + 3 retrofits + the `evaluateSetup` narrative spine + UI wire-in
-  are implemented and individually reviewed; final whole-branch review = "ready to merge with
-  fixes" (cheap fixes landed). **Two composition decisions + Tier-3 items below need Luis
-  before merge / Phase 3.**
+- **Resume pointer:** **Phase 2 boundary — decisions 1 & 2 applied; awaiting Luis on merge.**
+  166 tests green, typecheck clean, build passes. All 6 gates + 3 retrofits + the
+  `evaluateSetup` narrative spine + UI wire-in implemented and individually reviewed; final
+  whole-branch review clean (all fixes landed); both composition decisions (structure→M15,
+  consolidation filter) applied. Remaining items 3–6 below are confirmations/calibration, not
+  code blockers. **Next: Luis decides merge (branch `feat/phase2-heuristic-gates`) + whether to
+  open Phase 3.**
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
 
-### Phase 2 boundary — decisions for Luis (from the final whole-branch review)
+### Phase 2 boundary — decisions
 
-1. **`market-structure` is redundant inside the sequence.** `bias` already derives direction
-   from H1 structure, then the `structure` gate re-checks the *same* H1 series — so it always
-   passes when bias passed (7 discriminating gates, not 8). Options: (a) evaluate `structure`
-   on **M15** (the id is `h1-m15-bias` but bias ignores M15 today) for a genuinely independent
-   confirmation; (b) accept + document it as an intentional overlap. **Not a correctness bug**
-   (bias-toward-WAIT holds). Luis' call.
-2. **`consolidation` is checked at "now", not "before the break".** The temporal refactor moved
-   the break/retest/confirm back into the window, but `consolidation` still inspects the latest
-   bars — so it acts as a "not currently chopping" filter, not the checklist's "consolidation
-   *before* the breakout". Options: (a) evaluate it on the **pre-breakout slice**
-   `c.slice(0, breakoutIdx)` for literal fidelity; (b) accept + rename/document as a current-chop
-   filter. Luis' call.
+1. **`market-structure` redundancy → RESOLVED (Luis).** Structure gate now evaluates on **M15**
+   (H1 bias + independent M15 structure confirmation). Applied; docs updated (spec addendum 2);
+   +independence test; structure detail text made timeframe-neutral.
+2. **`consolidation` timing → RESOLVED (Luis).** Kept as a **current-chop filter** at the entry
+   moment (literal checklist step 3). NOT moved to the pre-breakout slice (would wrongly block
+   base→breakout setups). A base-before-breakout quality gate is deferred to Phase 2.5. Documented.
+
+**Still awaiting Luis' confirmation (not blockers, but should be blessed before live use):**
 3. **Re-cross invalidation rule** (a close back through the level after the retest but before
    confirmation invalidates the setup) is a design-spec inference, **not verbatim** in Appendix A.
    Confirm it matches your intent.
 4. **Confirmation "upper/lower third" threshold** (2/3, 1/3) — an invented numeric bound (now
    tagged PROVISIONAL). Confirm thirds vs halves vs other before it's trusted live.
-
-Full context for each is in the decision log + Blocked/Tier-3 below.
+5. **Provisional thresholds** generally — `consolidation` 0.5 / mid-third, `breakoutBufferPips`
+   20 (0.20 price), `consolidationLookback` 20 — all UNVALIDATED, tagged in code, awaiting your
+   calibration against past charts before live sizing/signals are trusted.
+6. **Live-API check** — still needs your real `VITE_TWELVEDATA_KEY` for the M5 freshness +
+   rate-limit check (the polling fix keeps it ~408 credits/day, under the 800/day free cap).
 
 ## Backlog
 
