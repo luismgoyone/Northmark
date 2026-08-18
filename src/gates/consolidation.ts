@@ -3,7 +3,10 @@ import { ema } from '../indicators/ema'
 
 /**
  * Consolidation = a clear range, detected from PRICE BEHAVIOR (checklist step 3 + the
- * Critical Implementation Principle), never a fixed "N flat candles" rule. Three signals,
+ * Critical Implementation Principle), never a fixed "N flat candles" rule. This is a
+ * CURRENT-CHOP filter: it verifies price is not ranging AT THE ENTRY MOMENT (the trailing
+ * window it's called on), not that a base preceded the breakout — a base→breakout quality
+ * check would be a separate, inverted-polarity gate (deferred to Phase 2.5). Three signals,
  * all required, over the last `consolidationLookback` bars (a MAX window bound):
  *   1. Overlapping bodies — the range of candle CLOSES is small vs the full high-low span.
  *   2. Flat EMA9 — `ema().slope === 'flat'` (the indicator's own volatility-aware epsilon).

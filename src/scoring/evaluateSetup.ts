@@ -49,12 +49,21 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   if (b.result.status !== 'pass' || b.direction === null) return finish('h1-m15-bias', b.direction)
   const direction = b.direction
 
-  // 2. Structure
-  const s = structure(ctx.h1, direction)
+  // 2. Structure — `bias` already derives `direction` from H1 structure, so re-checking H1
+  // here would be tautological (it would always pass once bias passed). Instead this gate is
+  // an INDEPENDENT confirmation on M15: H1 sets the primary direction, M15 must independently
+  // confirm the SAME direction still holds there (checklist step 2, gate id `h1-m15-bias`: H1
+  // bias + M15 confirmation). A divergent M15 structure now correctly blocks the setup.
+  const s = structure(ctx.m15, direction)
   results.set('market-structure', s)
   if (s.status !== 'pass') return finish('market-structure', direction)
 
-  // 3. Consolidation (fail = NO-TRADE; only `pass` proceeds)
+  // 3. Consolidation (fail = NO-TRADE; only `pass` proceeds). This is a CURRENT-CHOP filter:
+  // it checks price is not ranging AT THE ENTRY MOMENT (the latest bars), per checklist step 3
+  // ("avoid initiating trades inside clear consolidation") — not that a base preceded the
+  // breakout. It intentionally stays on the trailing window rather than the pre-breakout slice,
+  // so it doesn't wrongly block classic base→breakout setups. A base→breakout QUALITY check
+  // would be a separate, inverted-polarity gate — deferred to Phase 2.5.
   const con = consolidation(ctx.m5, config)
   results.set('consolidation', con)
   if (con.status !== 'pass') return finish('consolidation', direction)

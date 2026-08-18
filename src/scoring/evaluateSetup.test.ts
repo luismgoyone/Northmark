@@ -120,11 +120,13 @@ describe('evaluateSetup', () => {
   it('waits at "retest" when a breakout has occurred but price has not yet returned to hold the level', () => {
     const m5 = fullNarrative().slice(0, 9) // through the breakout bar only, no retest bar yet
     const h1 = trendSeries('up', 6)
-    const ctx: MarketContext = { m5, m15: m5, h1 }
+    const m15 = trendSeries('up', 6) // clean long structure, independent of the m5 narrative
+    const ctx: MarketContext = { m5, m15, h1 }
 
-    // Preconditions: bias/structure pass on h1, consolidation/level-id pass on this m5 slice.
+    // Preconditions: bias passes on h1, structure passes on m15, consolidation/level-id pass
+    // on this m5 slice.
     expect(bias(ctx, defaultConfig).direction).toBe('long')
-    expect(structure(h1, 'long').status).toBe('pass')
+    expect(structure(m15, 'long').status).toBe('pass')
     expect(consolidation(m5, defaultConfig).status).toBe('pass')
     expect(levelId(m5, 'long').level).not.toBeNull()
 
@@ -138,18 +140,19 @@ describe('evaluateSetup', () => {
 
   it('detects the full breakout→retest→confirmation narrative and reaches status "setup" (long)', () => {
     const h1 = trendSeries('up', 6)
+    const m15 = trendSeries('up', 6) // clean long structure, independent of the m5 narrative
     const m5 = fullNarrative()
     const cfg = defaultConfig
 
     // Prove each precondition BEFORE asserting the setup, so this is non-vacuous.
-    expect(bias({ m5, m15: m5, h1 }, cfg).direction).toBe('long')
-    expect(structure(h1, 'long').status).toBe('pass')
+    expect(bias({ m5, m15, h1 }, cfg).direction).toBe('long')
+    expect(structure(m15, 'long').status).toBe('pass')
     expect(consolidation(m5, cfg).status).toBe('pass')
     const { level } = levelId(m5, 'long')
     expect(level).not.toBeNull()
     expect(level).toBe(2100)
 
-    const v = evaluateSetup({ m5, m15: m5, h1 }, cfg)
+    const v = evaluateSetup({ m5, m15, h1 }, cfg)
     expect(v.status).toBe('setup')
     if (v.status === 'setup') {
       expect(v.direction).toBe('long')
@@ -162,6 +165,7 @@ describe('evaluateSetup', () => {
 
   it('rejects a whipsaw: price closing back through the level after the retest invalidates the setup', () => {
     const h1 = trendSeries('up', 6)
+    const m15 = trendSeries('up', 6) // clean long structure, independent of the m5 narrative
     const m5 = whipsawNarrative()
     const cfg = defaultConfig
 
@@ -169,7 +173,7 @@ describe('evaluateSetup', () => {
     const { level } = levelId(m5, 'long')
     expect(level).toBe(2100)
 
-    const v = evaluateSetup({ m5, m15: m5, h1 }, cfg)
+    const v = evaluateSetup({ m5, m15, h1 }, cfg)
     expect(v.status).toBe('wait')
     if (v.status === 'wait') {
       expect(v.blockedBy).toBe('confirmation')
@@ -179,8 +183,25 @@ describe('evaluateSetup', () => {
     }
   })
 
+  it('blocks at market-structure when H1 bias is long but M15 structure independently disagrees', () => {
+    const h1 = trendSeries('up', 6) // drives bias long
+    const m15 = rangeSeries() // no clear structure on M15 (structureDirection === null)
+    const m5 = fullNarrative()
+    const cfg = defaultConfig
+
+    // Preconditions: bias is long from H1, but M15 structure independently does NOT confirm
+    // long — proves the two checks are decoupled (not vacuously both trivially true/false).
+    expect(bias({ m5, m15, h1 }, cfg).direction).toBe('long')
+    expect(structure(m15, 'long').status).not.toBe('pass')
+
+    const v = evaluateSetup({ m5, m15, h1 }, cfg)
+    expect(v.status).toBe('wait')
+    if (v.status === 'wait') expect(v.blockedBy).toBe('market-structure')
+  })
+
   it('bounds the breakout scan after the level pivot: a pre-pivot spike above the level is not the breakout', () => {
     const h1 = trendSeries('up', 6)
+    const m15 = trendSeries('up', 6) // clean long structure, independent of the m5 narrative
     const m5 = prePivotNarrative()
     const cfg = defaultConfig
 
@@ -188,7 +209,7 @@ describe('evaluateSetup', () => {
     const { level } = levelId(m5, 'long')
     expect(level).toBe(2100)
 
-    const v = evaluateSetup({ m5, m15: m5, h1 }, cfg)
+    const v = evaluateSetup({ m5, m15, h1 }, cfg)
     // Resolving to `setup` proves the early pre-pivot spike (index 0) was NOT selected as the
     // breakout — had it been, the retest scan would start at index 1 and fail immediately
     // (index 1 closes 2097 < level), returning wait@retest instead of the real post-pivot setup.
