@@ -9,6 +9,13 @@ const BASE_URL = 'https://api.twelvedata.com/time_series'
 /** Only these intervals are proxyable — mirrors the `api/candles.ts` whitelist. */
 const ALLOWED_INTERVALS = new Set(['5min', '15min', '1h'])
 
+/** Clamp `outputsize` to [1, 500] (default 200) — mirrors `api/candles.ts`. */
+function clampOutputSize(raw: string | null): number {
+  const n = Number.parseInt(raw ?? '', 10)
+  if (Number.isNaN(n)) return 200
+  return Math.min(500, Math.max(1, n))
+}
+
 /**
  * Dev-only middleware that mimics the `api/candles.ts` Vercel function.
  *
@@ -35,7 +42,7 @@ function apiCandlesDevProxy(mode: string): Plugin {
 
         const requestUrl = new URL(req.url ?? '', 'http://localhost')
         const interval = requestUrl.searchParams.get('interval') ?? '5min'
-        const outputsize = requestUrl.searchParams.get('outputsize') ?? '200'
+        const outputsize = clampOutputSize(requestUrl.searchParams.get('outputsize'))
 
         if (!ALLOWED_INTERVALS.has(interval)) {
           res.statusCode = 400
@@ -58,6 +65,8 @@ function apiCandlesDevProxy(mode: string): Plugin {
         try {
           const response = await fetch(url)
           const data = await response.json()
+          // Pass through verbatim regardless of upstream HTTP status: the client branches
+          // on Twelve Data's own `status: 'ok' | 'error'` field (mirrors api/candles.ts).
           res.statusCode = 200
           res.end(JSON.stringify(data))
         } catch (err) {

@@ -15,6 +15,13 @@ const BASE_URL = 'https://api.twelvedata.com/time_series'
 /** Only these intervals are proxyable — keeps this endpoint from being an open relay. */
 const ALLOWED_INTERVALS = new Set(['5min', '15min', '1h'])
 
+/** Clamp `outputsize` to [1, 500] (default 200) so a caller can't waste API credits. */
+function clampOutputSize(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? '', 10)
+  if (Number.isNaN(n)) return 200
+  return Math.min(500, Math.max(1, n))
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const key = process.env.TWELVEDATA_KEY
   if (!key || key.trim() === '') {
@@ -35,7 +42,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const outputsizeParam = req.query.outputsize
-  const outputsize = (Array.isArray(outputsizeParam) ? outputsizeParam[0] : outputsizeParam) ?? '200'
+  const outputsizeRaw = Array.isArray(outputsizeParam) ? outputsizeParam[0] : outputsizeParam
+  const outputsize = clampOutputSize(outputsizeRaw)
 
   const url =
     `${BASE_URL}?symbol=${encodeURIComponent(SYMBOL)}` +
@@ -47,6 +55,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await fetch(url)
     const data = await response.json()
 
+    // Pass the payload through verbatim regardless of upstream HTTP status: the client
+    // branches on Twelve Data's own `status: 'ok' | 'error'` field, so upstream HTTP
+    // errors surface there rather than being handled here.
     res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60')
     res.status(200).json(data)
   } catch (err) {
