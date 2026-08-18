@@ -7,14 +7,38 @@
 
 ## Current
 
-- **Phase:** 1 — Deterministic core ✅ **COMPLETE** (stopped at boundary for Luis' review)
-- **Wave:** 5 — UI done. All Phase-1 waves complete.
-- **Resume pointer:** **Phase 1 boundary — awaiting Luis.** 96 tests green, build passes.
-  Review the decision log + open flags below. Phase 2 (heuristic gates incl. level-ID) is
-  gated on Luis' go + the remaining checklist capture. Mockup:
-  https://claude.ai/code/artifact/379b9651-e38d-4f5e-b4a2-05fcc947a82e
+- **Phase:** 2 — Heuristic gates + decision spine ✅ **COMPLETE** (stopped at boundary for Luis' review)
+- **Branch:** `feat/phase2-heuristic-gates` (cut from `feat/live-price-chart`).
+- **Resume pointer:** **Phase 2 boundary — decisions 1 & 2 applied; awaiting Luis on merge.**
+  166 tests green, typecheck clean, build passes. All 6 gates + 3 retrofits + the
+  `evaluateSetup` narrative spine + UI wire-in implemented and individually reviewed; final
+  whole-branch review clean (all fixes landed); both composition decisions (structure→M15,
+  consolidation filter) applied. Remaining items 3–6 below are confirmations/calibration, not
+  code blockers. **Next: Luis decides merge (branch `feat/phase2-heuristic-gates`) + whether to
+  open Phase 3.**
 - **Loop mode:** pause at phase boundary; questions answered by `product-lead` (Tier 1/2),
   Luis only on Tier 3.
+
+### Phase 2 boundary — decisions
+
+1. **`market-structure` redundancy → RESOLVED (Luis).** Structure gate now evaluates on **M15**
+   (H1 bias + independent M15 structure confirmation). Applied; docs updated (spec addendum 2);
+   +independence test; structure detail text made timeframe-neutral.
+2. **`consolidation` timing → RESOLVED (Luis).** Kept as a **current-chop filter** at the entry
+   moment (literal checklist step 3). NOT moved to the pre-breakout slice (would wrongly block
+   base→breakout setups). A base-before-breakout quality gate is deferred to Phase 2.5. Documented.
+
+**Still awaiting Luis' confirmation (not blockers, but should be blessed before live use):**
+3. **Re-cross invalidation rule** (a close back through the level after the retest but before
+   confirmation invalidates the setup) is a design-spec inference, **not verbatim** in Appendix A.
+   Confirm it matches your intent.
+4. **Confirmation "upper/lower third" threshold** (2/3, 1/3) — an invented numeric bound (now
+   tagged PROVISIONAL). Confirm thirds vs halves vs other before it's trusted live.
+5. **Provisional thresholds** generally — `consolidation` 0.5 / mid-third, `breakoutBufferPips`
+   20 (0.20 price), `consolidationLookback` 20 — all UNVALIDATED, tagged in code, awaiting your
+   calibration against past charts before live sizing/signals are trusted.
+6. **Live-API check** — still needs your real `VITE_TWELVEDATA_KEY` for the M5 freshness +
+   rate-limit check (the polling fix keeps it ~408 credits/day, under the 800/day free cap).
 
 ## Backlog
 
@@ -46,14 +70,27 @@ State key: `[ ]` next/todo · `[~]` in-progress · `[x]` done · `[!]` blocked (
 - [x] Task 1.14 — UI components + App wiring (frontend; honest WAIT state, no-BUY test; 96 tests; build green)
 - [x] **Phase 1 boundary → STOPPED for Luis** (review packet below) ← YOU ARE HERE
 
-### Phase 2 — Heuristic gates (blocked on Task 0.5)
-- [ ] Task 2.1 — HH/HL / LH/LL structure
-- [ ] Task 2.2 — Consolidation detection
-- [ ] Task 2.3 — Retest interaction
-- [ ] Task 2.4 — Confirmation candle
-- [ ] Task 2.5 — Multi-timeframe bias
-- [ ] Task 2.6 — Wire heuristic gates into scoring
-- [ ] **Phase 2 boundary → STOP for Luis**
+### Phase 2 — Heuristic gates + decision spine ✅ COMPLETE (all reviewed)
+- [x] Task 0.5 — Verbatim 13-step checklist captured (unblocked Phase 2)
+- [x] Task 2.0T — `Direction` type + config reframe (structure-driven bounds)
+- [x] Task 2.1 — HH/HL / LH/LL structure gate
+- [x] Task 2.5 — H1 bias gate (emits Direction; EMA9 supports-not-overrides, tested)
+- [x] Task 2.0 — Level-ID gate (reworked → the *broken* level, temporal model)
+- [x] Task 2.2 — Structure-driven consolidation gate (guard fix + provisional tags)
+- [x] Task R1 — breakoutClose direction-aware + price-unit buffer (dropped PIP hack)
+- [x] Task 2.3 — Retest gate (holds broken level as new S/R; +short tests)
+- [x] Task 2.4 — Confirmation-candle gate (+short + edges)
+- [x] Task R2 — riskReward direction-aware
+- [x] Task R3 — risk.ts direction-aware TP + non-finite positionSize guard
+- [x] Task 2.6a — `evaluateSetup` sequence + `score.authorized` (reworked → narrative scan; hardened)
+- [x] Task 2.6b — UI wire-in (App consumes evaluateSetup; 8 honest checklist rows; no BUY)
+- [x] **Phase 2 boundary → STOPPED for Luis** (decisions above; final review clean) ← YOU ARE HERE
+
+**Mid-build design fix (Luis decision):** the original all-gates-on-the-last-candle model made
+a real `setup` structurally unreachable. Luis chose the **temporal narrative scan** — the
+break→retest→confirm sequence is detected across the window; the broken level sits behind price
+by the confirmation bar. `levelId` + `evaluateSetup` reworked accordingly; a full `setup` is now
+reachable and hand-verified. See the design-spec addendum.
 
 ### Phase 3 — Later, optional (needs Luis opt-in)
 - [ ] Task 3.1 — Continuous scanning + alerts (first real backend)

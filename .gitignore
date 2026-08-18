@@ -4,6 +4,7 @@ node_modules
 # build output
 dist
 dist-ssr
+tsconfig.tsbuildinfo
 
 # local env — NEVER commit the API key
 .env.local
@@ -22,3 +23,6 @@ npm-debug.log*
 
 # test / coverage
 coverage
+
+# Superpowers SDD scratch (ledger, briefs, reports)
+.superpowers/

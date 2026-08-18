@@ -106,19 +106,38 @@ describe('useMarketData', () => {
     expect(result.current.error?.message).toBe('refresh failed')
   })
 
-  it('refetches after the aligned 5-minute interval elapses', async () => {
+  it('polls each timeframe on its own cadence, not all three every 5 minutes', async () => {
     renderHook(() => useMarketData())
 
     await flushPromises()
+    // Initial burst: one fetch each.
     expect(mockFetch).toHaveBeenCalledTimes(3)
+    const callsFor = (tf: Timeframe) => mockFetch.mock.calls.filter(([t]) => t === tf).length
 
+    // After 5 minutes: only M5 has closed again — M15/H1 untouched.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(M5_MS)
     })
+    expect(callsFor('M5')).toBe(2)
+    expect(callsFor('M15')).toBe(1)
+    expect(callsFor('H1')).toBe(1)
 
-    // A second full round of M5/M15/H1 fetches.
-    expect(mockFetch).toHaveBeenCalledTimes(6)
-    expect(mockFetch).toHaveBeenCalledWith('M5')
+    // Reach 15 minutes total (fires at 0,5,10,15): M5 4×, M15 now 2×, H1 still 1×.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2 * M5_MS)
+    })
+    expect(callsFor('M5')).toBe(4)
+    expect(callsFor('M15')).toBe(2)
+    expect(callsFor('H1')).toBe(1)
+
+    // Reach 60 minutes total: M5 at 0..60/5m = 13×, M15 at 0/15/30/45/60 = 5×,
+    // H1 finally polls a second time (0 and 60).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9 * M5_MS)
+    })
+    expect(callsFor('M5')).toBe(13)
+    expect(callsFor('M15')).toBe(5)
+    expect(callsFor('H1')).toBe(2)
   })
 
   it('clears timers on unmount and does not refetch afterward', async () => {

@@ -43,7 +43,7 @@ export function Score({
   score,
   gates,
   verdict,
-  total = 10,
+  total = 8,
 }: {
   score: ScoreValue
   gates: GateResult[]

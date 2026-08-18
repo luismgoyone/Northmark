@@ -6,7 +6,7 @@ import type { GateResult } from '../types'
 
 export type ScoreBand = 'wait' | 'building' | 'strong'
 
-export type Score = { passed: number; band: ScoreBand }
+export type Score = { passed: number; band: ScoreBand; authorized: boolean }
 
 // Band thresholds — Tier-2 default, anchored to MVP §4 endpoints
 // ("3–4 = WAIT, 8–10 = strong, per the user's rule"):
@@ -31,8 +31,14 @@ const STRONG_MIN = 8
  * (cleared) do NOT override — in Phase 1 vetoes() returns all 'wait', so the
  * override never triggers yet, but the contract is honored. `vetoes` defaults
  * to empty → no override.
+ *
+ * `authorized` is DISPLAY-passthrough, not derived from the tally: it is
+ * whatever the caller asserts (default `false`), demoted to `false` whenever
+ * a veto fires. score() never sets `authorized = true` on its own — only the
+ * required-gate sequence (evaluateSetup) may claim it, by explicitly passing
+ * `authorized = true` once every required gate has passed.
  */
-export function score(gateResults: GateResult[], vetoes: GateResult[] = []): Score {
+export function score(gateResults: GateResult[], vetoes: GateResult[] = [], authorized = false): Score {
   const passed = gateResults.filter((g) => g.status === 'pass').length
 
   let band: ScoreBand
@@ -44,9 +50,10 @@ export function score(gateResults: GateResult[], vetoes: GateResult[] = []): Sco
     band = 'building'
   }
 
-  if (vetoes.some((v) => v.status === 'fail')) {
+  const vetoed = vetoes.some((v) => v.status === 'fail')
+  if (vetoed) {
     band = 'wait'
   }
 
-  return { passed, band }
+  return { passed, band, authorized: authorized && !vetoed }
 }

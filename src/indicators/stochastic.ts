@@ -86,3 +86,30 @@ export function stochastic(
 
   return { k: slowK, d: dLine, zone, slope }
 }
+
+/**
+ * Per-bar slow stochastic as a series aligned 1:1 with `candles`.
+ *
+ * Same `slowKAt` math as `stochastic()`, emitted at every settled bar so %K/%D can be
+ * plotted in a sub-panel. Warmup bars (index < k + smooth + d - 3) are `null`: below
+ * that there isn't enough history for a trustworthy read, matching the scalar
+ * function's bias toward a neutral WAIT rather than a false signal.
+ */
+export function stochasticSeries(
+  candles: Candle[],
+  k: number,
+  d: number,
+  smooth: number,
+): ({ k: number; d: number } | null)[] {
+  const n = candles.length
+  const out: ({ k: number; d: number } | null)[] = new Array(n).fill(null)
+  const minIndex = k + smooth + d - 3
+  for (let i = 0; i < n; i++) {
+    if (i < minIndex) continue
+    const slowK = slowKAt(candles, i, k, smooth)
+    const dValues: number[] = []
+    for (let j = i - d + 1; j <= i; j++) dValues.push(slowKAt(candles, j, k, smooth))
+    out[i] = { k: slowK, d: mean(dValues) }
+  }
+  return out
+}

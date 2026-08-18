@@ -1,32 +1,40 @@
 import { useState } from 'react'
 import type { ReactElement } from 'react'
-import type { GateResult, MarketContext } from './types'
+import type { Config, MarketContext } from './types'
 import { defaultConfig } from './config'
-import { score } from './scoring/score'
-import { vetoes } from './scoring/vetoes'
+import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
 import { useMarketData } from './hooks/useMarketData'
-import { PHASE1_GATES } from './ui/labels'
 import { Score } from './ui/Score'
-import { TradeCard } from './ui/TradeCard'
+import { TradeCard, type TradeSetup } from './ui/TradeCard'
 import { VetoList } from './ui/VetoList'
 import { Checklist } from './ui/Checklist'
+import { PriceChart } from './ui/PriceChart'
 
 /**
- * Phase-1 checklist state — HONEST.
- *
- * A full live signal needs level identification, which is a Phase-2 gate that
- * does not exist yet. Without an identified level there is no candidate setup,
- * so none of the ten gates can be truthfully evaluated. We therefore emit ten
- * `wait` rows rather than fabricate passes: a false green here is a false
- * trade, and the whole product biases toward WAIT. The same array feeds both the
- * Checklist rows and the Score meter (one source of truth).
+ * Build the TradeCard model from an authorized verdict. Entry/sl/tp1/tp2/lot
+ * come straight from the engine; the rest (risk $, R:R ratios) are derived
+ * from config + direction-aware distances. `provisional: false` because an
+ * authorized setup (every required gate passed) is confirmed, not building.
  */
-function phase1Gates(): GateResult[] {
-  return PHASE1_GATES.map((g) => ({
-    id: g.id,
-    status: 'wait',
-    detail: 'Awaiting live setup assembly (level identification, Phase 2).',
-  }))
+function toTradeSetup(v: Extract<SetupVerdict, { status: 'setup' }>, config: Config): TradeSetup {
+  const isLong = v.direction === 'long'
+  const risk = isLong ? v.entry - v.sl : v.sl - v.entry
+  const reward1 = isLong ? v.tp1 - v.entry : v.entry - v.tp1
+  const reward2 = isLong ? v.tp2 - v.entry : v.entry - v.tp2
+  return {
+    direction: v.direction,
+    entry: v.entry,
+    sl: v.sl,
+    tp1: v.tp1,
+    tp2: v.tp2,
+    lot: v.lot,
+    riskDollars: config.accountSize * config.riskPct,
+    riskPct: config.riskPct,
+    rr1: risk > 0 ? reward1 / risk : 0,
+    rr2: risk > 0 ? reward2 / risk : 0,
+    minRR: config.minRR,
+    provisional: false,
+  }
 }
 
 /** Last M5 candle time → wall-clock label, or a placeholder if unavailable. */
@@ -152,12 +160,15 @@ export default function App(): ReactElement {
     )
   }
 
-  const gates = phase1Gates()
-  const vetoResults = vetoes(ctx, config)
-  const signal = score(gates, vetoResults)
+  const result = evaluateSetup(ctx, config)
+  const gates = result.gates
+  const vetoResults = result.vetoes
+  const signal = result.score
   const verdict =
-    'Holding — no candidate setup yet. Live signal assembly (level identification) arrives in ' +
-    'Phase 2; until then the checklist reads WAIT and no trade levels are shown. No vetoes active.'
+    result.status === 'setup'
+      ? `${result.direction.toUpperCase()} setup authorized — all required gates passed. Entry ${result.entry}, SL ${result.sl}.`
+      : `Holding — first unmet gate: ${result.blockedBy}. Bias toward WAIT.`
+  const tradeSetup: TradeSetup | null = result.status === 'setup' ? toTradeSetup(result, config) : null
 
   return (
     <main className="min-h-screen bg-bg text-ink">
@@ -173,13 +184,16 @@ export default function App(): ReactElement {
         <Score score={signal} gates={gates} verdict={verdict} total={gates.length} />
 
         <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
-          <b className="font-semibold text-ink">Phase 1 of 2.</b> Deterministic math is live. Live
-          signal assembly — level identification, structure, retest and confirmation — arrives in
-          Phase 2, at which point the checklist and trade card fill with a real candidate setup.
+          <b className="font-semibold text-ink">Live signal assembly is active.</b> Structure,
+          level, breakout, retest, and confirmation are evaluated on real candles. The checklist
+          and trade card fill only when a real candidate setup forms — expect WAIT most of the
+          time.
         </p>
 
+        <PriceChart ctx={ctx} emaPeriod={config.ema.period} stoch={config.stoch} />
+
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
-          <TradeCard setup={null} />
+          <TradeCard setup={tradeSetup} />
           <VetoList vetoes={vetoResults} />
         </div>
 
