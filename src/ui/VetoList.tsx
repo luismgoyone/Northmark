@@ -6,24 +6,28 @@ import type { StatusKind } from './status-tokens'
 
 /**
  * Map a veto `GateResult` to its presentation state. The engine convention
- * (scoring/vetoes.ts): a TRIGGERED no-trade block is `fail`; a deferred /
- * not-yet-evaluable veto is `wait`. Triggered → the one loud `danger` treatment;
- * everything else → the calm, recessive `defer` ("Monitoring").
+ * (scoring/vetoes.ts): a TRIGGERED no-trade block is `fail`; a cleared
+ * (evaluated & not triggered) veto is `pass`; a not-yet-evaluable / not-yet-
+ * reached veto is `wait`. Triggered → the one loud `danger` treatment; cleared
+ * → the green `pass` treatment; monitoring → the calm, recessive `defer`.
  */
 function vetoKind(status: GateResult['status']): StatusKind {
-  return status === 'fail' ? 'danger' : 'defer'
+  if (status === 'fail') return 'danger'
+  if (status === 'pass') return 'pass'
+  return 'defer'
 }
 
 /**
- * The no-trade veto panel (docs/ui-spec.md §1/§3). In Phase 1 every veto is
- * deferred, so this reads as calm "monitoring" — the header states the
- * zero-alarm state in words (`0 active · N monitoring`). A triggered veto is the
- * single loudest thing the UI can show; it fills red and forces the band to WAIT
- * (that override lives in score.ts, not here).
+ * The no-trade veto panel (docs/ui-spec.md §1/§3). Each veto is one of three
+ * honest states: triggered (loud red, forces WAIT — that override lives in
+ * score.ts, not here), cleared (green — its gate passed), or monitoring (calm
+ * — not yet evaluable / not yet reached). The header states the 3-way count
+ * in words (`N active · N clear · N monitoring`).
  */
 export function VetoList({ vetoes }: { vetoes: GateResult[] }): ReactElement {
   const active = vetoes.filter((v) => v.status === 'fail').length
-  const monitoring = vetoes.length - active
+  const cleared = vetoes.filter((v) => v.status === 'pass').length
+  const monitoring = vetoes.filter((v) => v.status === 'wait').length
 
   return (
     <section
@@ -35,14 +39,13 @@ export function VetoList({ vetoes }: { vetoes: GateResult[] }): ReactElement {
           No-Trade Vetoes
         </h2>
         <span className="font-mono text-[12px] text-ink-2">
-          {active} active · {monitoring} monitoring
+          {active} active · {cleared} clear · {monitoring} monitoring
         </span>
       </div>
 
       <div className="px-[14px] py-2 pb-[14px]">
         {vetoes.map((veto) => {
           const kind = vetoKind(veto.status)
-          const triggered = kind === 'danger'
           return (
             <div
               key={veto.id}
@@ -51,9 +54,7 @@ export function VetoList({ vetoes }: { vetoes: GateResult[] }): ReactElement {
               <StatusIcon status={kind} />
               <div className="min-w-0">
                 <div className="text-[13.5px] text-ink">{vetoName(veto.id)}</div>
-                <div className="mt-px text-[11.5px] text-ink-3">
-                  {triggered ? veto.detail : 'Not yet evaluable — Phase 1'}
-                </div>
+                <div className="mt-px text-[11.5px] text-ink-3">{veto.detail}</div>
               </div>
               <StatusChip status={kind} />
             </div>
