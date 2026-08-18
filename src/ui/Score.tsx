@@ -61,7 +61,7 @@ export function Score({
         <span
           className={`inline-flex items-center gap-2 self-start rounded-[10px] px-[15px] py-2 text-[20px] font-bold tracking-[0.01em] ${tone.chip}`}
         >
-          <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none">
+          <svg aria-hidden="true" width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor">
             {bandGlyph(score.band)}
           </svg>
           {STATUS_LABEL[score.band].toUpperCase()}
