@@ -53,6 +53,18 @@ export function trendSeries(direction: 'up' | 'down', legs = 4): Candle[] {
   return candles
 }
 
+/**
+ * Illustrative presets build candles with small-integer `time` (0, 1, 2…) so the fixtures
+ * read clearly. Real timestamps are only needed for the chart (unix ms), so this rewrites
+ * `time` to ascending, deterministic epoch-ms values without touching OHLC. `BASE` is a fixed
+ * constant (not `Date.now()`) so presets and their tests stay deterministic across runs.
+ */
+const BASE = 1_734_000_000_000
+
+export function withTimes(candles: Candle[], stepMs: number): Candle[] {
+  return candles.map((c, i) => ({ ...c, time: BASE + i * stepMs }))
+}
+
 /** A flat, overlapping range: all bars share one center, no directional progression. */
 export function rangeSeries(count = 20): Candle[] {
   return Array.from({ length: count }, (_v, i) => centerBar(i, 1000, 3))

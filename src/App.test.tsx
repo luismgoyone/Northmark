@@ -109,6 +109,8 @@ test('selecting a demo preset shows the DEMO banner and a populated trade card, 
   ).not.toBeInTheDocument()
   // Never claim live assembly while showing an illustrative preset.
   expect(screen.queryByText(/Live signal assembly is active/)).not.toBeInTheDocument()
+  // The price chart now renders in demo mode too (demo candles carry real timestamps).
+  expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
 })
 
 test('a live refresh error banner never shows in demo mode (error state is stale, not live)', () => {

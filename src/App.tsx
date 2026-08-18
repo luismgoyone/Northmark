@@ -146,6 +146,7 @@ export default function App(): ReactElement {
 
   const demoPreset = mode === 'live' ? null : DEMO_PRESETS.find((p) => p.id === mode) ?? null
   const activeCtx = demoPreset ? demoPreset.ctx : ctx
+  const activeConfig = demoPreset?.config ?? config
 
   if (mode === 'live' && !activeCtx) {
     return (
@@ -178,7 +179,7 @@ export default function App(): ReactElement {
   }
 
   const ctxForRender = activeCtx as MarketContext
-  const result = evaluateSetup(ctxForRender, config)
+  const result = evaluateSetup(ctxForRender, activeConfig)
   const gates = result.gates
   const vetoResults = result.vetoes
   const signal = result.score
@@ -186,7 +187,8 @@ export default function App(): ReactElement {
     result.status === 'setup'
       ? `${result.direction.toUpperCase()} setup authorized — all required gates passed. Entry ${result.entry}, SL ${result.sl}.`
       : `Holding — first unmet gate: ${result.blockedBy}. Bias toward WAIT.`
-  const tradeSetup: TradeSetup | null = result.status === 'setup' ? toTradeSetup(result, config) : null
+  const tradeSetup: TradeSetup | null =
+    result.status === 'setup' ? toTradeSetup(result, activeConfig) : null
 
   return (
     <main className="min-h-screen bg-bg text-ink">
@@ -220,14 +222,7 @@ export default function App(): ReactElement {
           )}
         </p>
 
-        {demoPreset ? (
-          <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
-            Chart preview isn't available for this preset — illustrative presets don't carry
-            real timestamps. Switch to Live to see the price chart.
-          </p>
-        ) : (
-          <PriceChart ctx={ctxForRender} emaPeriod={config.ema.period} stoch={config.stoch} />
-        )}
+        <PriceChart ctx={ctxForRender} emaPeriod={activeConfig.ema.period} stoch={activeConfig.stoch} />
 
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
           <TradeCard setup={tradeSetup} />
