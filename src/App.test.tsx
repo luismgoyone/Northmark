@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { Candle, MarketContext } from './types'
 import type { UseMarketData } from './hooks/useMarketData'
@@ -85,4 +85,61 @@ it('renders the price chart with a timeframe toggle when data is loaded', () => 
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
+})
+
+test('default render is Live: no demo banner, data source select shows Live', () => {
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+  expect(screen.queryByText(/DEMO DATA/i)).not.toBeInTheDocument()
+  expect((screen.getByLabelText('Data source') as HTMLSelectElement).value).toBe('live')
+})
+
+test('selecting a demo preset shows the DEMO banner and a populated trade card, still no buy button', () => {
+  // While in demo mode the live hook returns no ctx — demo data must not depend on it.
+  mockUseMarketData.mockReturnValue({ ctx: null, loading: true, error: null })
+  render(<App />)
+
+  fireEvent.change(screen.getByLabelText('Data source'), { target: { value: 'demo-setup' } })
+
+  expect(screen.getByText(/DEMO DATA/i)).toBeInTheDocument()
+  expect(screen.getByText('Lot Size')).toBeInTheDocument()
+  expect(screen.getByText(/▲ LONG/)).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: /buy|order|execute|place/i }),
+  ).not.toBeInTheDocument()
+  // Never claim live assembly while showing an illustrative preset.
+  expect(screen.queryByText(/Live signal assembly is active/)).not.toBeInTheDocument()
+  // The price chart now renders in demo mode too (demo candles carry real timestamps).
+  expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
+})
+
+test('a live refresh error banner never shows in demo mode (error state is stale, not live)', () => {
+  // Live had a good ctx then a refresh failed: hook still holds that error. This mirrors
+  // reality — the hook's early-return in disabled mode does NOT clear `error`, so App must
+  // gate the red banner on live mode itself, not on the (stale) error state.
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: new Error('rate limited') })
+  render(<App />)
+  // In live mode the honest refresh-failed banner is present.
+  expect(screen.getByText(/Live refresh failed/)).toBeInTheDocument()
+  expect(screen.getByText(/Showing the last good data/)).toBeInTheDocument()
+
+  fireEvent.change(screen.getByLabelText('Data source'), { target: { value: 'demo-setup' } })
+
+  // Demo state must not contradict itself: amber DEMO banner shows, and the red live-error
+  // banner is gone even though the stale error is still in hook state.
+  expect(screen.getByText(/DEMO DATA/i)).toBeInTheDocument()
+  expect(screen.queryByText(/Live refresh failed/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Showing the last good data/)).not.toBeInTheDocument()
+})
+
+test('switching back to Live from a demo preset removes the banner', () => {
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+
+  const select = screen.getByLabelText('Data source')
+  fireEvent.change(select, { target: { value: 'demo-wait' } })
+  expect(screen.getByText(/DEMO DATA/i)).toBeInTheDocument()
+
+  fireEvent.change(select, { target: { value: 'live' } })
+  expect(screen.queryByText(/DEMO DATA/i)).not.toBeInTheDocument()
 })

@@ -140,6 +140,16 @@ describe('useMarketData', () => {
     expect(callsFor('H1')).toBe(2)
   })
 
+  it('does not fetch or schedule timers when disabled', async () => {
+    renderHook(() => useMarketData(false))
+    await flushPromises()
+    expect(mockFetch).not.toHaveBeenCalled()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60 * 60 * 1000)
+    })
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
   it('clears timers on unmount and does not refetch afterward', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 

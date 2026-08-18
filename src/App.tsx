@@ -4,11 +4,14 @@ import type { Config, MarketContext } from './types'
 import { defaultConfig } from './config'
 import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
 import { useMarketData } from './hooks/useMarketData'
+import { DEMO_PRESETS, type Mode } from './demo/presets'
 import { Score } from './ui/Score'
 import { TradeCard, type TradeSetup } from './ui/TradeCard'
 import { VetoList } from './ui/VetoList'
 import { Checklist } from './ui/Checklist'
 import { PriceChart } from './ui/PriceChart'
+import { DemoSwitch } from './ui/DemoSwitch'
+import { DemoBanner } from './ui/DemoBanner'
 
 /**
  * Build the TradeCard model from an authorized verdict. Entry/sl/tp1/tp2/lot
@@ -57,7 +60,15 @@ function toggleTheme(): void {
   root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark')
 }
 
-function Header({ updated }: { updated?: string }): ReactElement {
+function Header({
+  updated,
+  mode,
+  onModeChange,
+}: {
+  updated?: string
+  mode: Mode
+  onModeChange: (m: Mode) => void
+}): ReactElement {
   return (
     <header className="flex flex-wrap items-center gap-4 px-0.5 pb-[18px] pt-1.5">
       <div className="mr-auto flex items-center gap-[11px]">
@@ -86,6 +97,8 @@ function Header({ updated }: { updated?: string }): ReactElement {
         </svg>
         Read-only
       </span>
+
+      <DemoSwitch value={mode} onChange={onModeChange} />
 
       <button
         type="button"
@@ -127,14 +140,19 @@ function CenteredPanel({ children }: { children: ReactElement }): ReactElement {
 }
 
 export default function App(): ReactElement {
-  const { ctx, loading, error } = useMarketData()
+  const [mode, setMode] = useState<Mode>('live')
+  const { ctx, loading, error } = useMarketData(mode === 'live')
   const [config] = useState(defaultConfig)
 
-  if (!ctx) {
+  const demoPreset = mode === 'live' ? null : DEMO_PRESETS.find((p) => p.id === mode) ?? null
+  const activeCtx = demoPreset ? demoPreset.ctx : ctx
+  const activeConfig = demoPreset?.config ?? config
+
+  if (mode === 'live' && !activeCtx) {
     return (
       <main className="min-h-screen bg-bg text-ink">
         <div className="mx-auto max-w-[1180px] px-4">
-          <Header />
+          <Header mode={mode} onModeChange={setMode} />
         </div>
         {loading ? (
           <CenteredPanel>
@@ -160,7 +178,8 @@ export default function App(): ReactElement {
     )
   }
 
-  const result = evaluateSetup(ctx, config)
+  const ctxForRender = activeCtx as MarketContext
+  const result = evaluateSetup(ctxForRender, activeConfig)
   const gates = result.gates
   const vetoResults = result.vetoes
   const signal = result.score
@@ -168,14 +187,17 @@ export default function App(): ReactElement {
     result.status === 'setup'
       ? `${result.direction.toUpperCase()} setup authorized — all required gates passed. Entry ${result.entry}, SL ${result.sl}.`
       : `Holding — first unmet gate: ${result.blockedBy}. Bias toward WAIT.`
-  const tradeSetup: TradeSetup | null = result.status === 'setup' ? toTradeSetup(result, config) : null
+  const tradeSetup: TradeSetup | null =
+    result.status === 'setup' ? toTradeSetup(result, activeConfig) : null
 
   return (
     <main className="min-h-screen bg-bg text-ink">
       <div className="mx-auto max-w-[1180px] px-4 pb-14 pt-5">
-        <Header updated={updatedLabel(ctx)} />
+        <Header updated={updatedLabel(ctxForRender)} mode={mode} onModeChange={setMode} />
 
-        {error && (
+        {mode !== 'live' && <DemoBanner onExit={() => setMode('live')} />}
+
+        {mode === 'live' && error && (
           <div className="mb-4 rounded-panel border border-fail-bd bg-fail-bg px-4 py-2.5 text-[12.5px] text-fail-fg">
             Live refresh failed ({error.message}). Showing the last good data.
           </div>
@@ -184,13 +206,23 @@ export default function App(): ReactElement {
         <Score score={signal} gates={gates} verdict={verdict} total={gates.length} />
 
         <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
-          <b className="font-semibold text-ink">Live signal assembly is active.</b> Structure,
-          level, breakout, retest, and confirmation are evaluated on real candles. The checklist
-          and trade card fill only when a real candidate setup forms — expect WAIT most of the
-          time.
+          {demoPreset ? (
+            <>
+              <b className="font-semibold text-ink">Demo signal assembly.</b> This checklist and
+              trade card are computed by the same engine, run on the illustrative preset above —
+              not on real candles.
+            </>
+          ) : (
+            <>
+              <b className="font-semibold text-ink">Live signal assembly is active.</b> Structure,
+              level, breakout, retest, and confirmation are evaluated on real candles. The
+              checklist and trade card fill only when a real candidate setup forms — expect WAIT
+              most of the time.
+            </>
+          )}
         </p>
 
-        <PriceChart ctx={ctx} emaPeriod={config.ema.period} stoch={config.stoch} />
+        <PriceChart ctx={ctxForRender} emaPeriod={activeConfig.ema.period} stoch={activeConfig.stoch} />
 
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
           <TradeCard setup={tradeSetup} />
