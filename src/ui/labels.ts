@@ -5,23 +5,15 @@ import { VETO_CATALOGUE } from '../scoring/vetoes'
  * component files so React-Refresh sees only components there.
  *
  * The engine's `GateResult` carries an `id`, not a human name — the checklist
- * sequence and its wording are a UI concern, so they live here. App builds its
- * `GateResult[]` from `PHASE1_GATES` and passes the SAME array to both the
- * Checklist rows and the Score confirmation meter (one source of truth).
+ * sequence and its wording are a UI concern, so they live here. App passes the
+ * engine's hard-filter `GateResult[]` (the 7 gates in `PHASE1_GATES`) to both the
+ * Checklist rows and the Score confirmation meter; the two SUPPORTING checks
+ * (`SUPPORTING_GATES`) are rendered separately beside the band, never as blockers.
  */
 export type GateDef = { id: string; name: string }
 
-/**
- * The 8 required checklist gates in process order (bias → structure → break →
- * retest → confirm → risk), matching docs/ui-spec.md §2 and the source
- * checklist. EMA9 and stochastic are not standalone required gates in the
- * verbatim strategy — EMA9 folds into bias/consolidation and stochastic isn't
- * in the 13-step doc at all — so both stay visible only in the PriceChart
- * panel, not here.
- */
 export const PHASE1_GATES: GateDef[] = [
-  { id: 'h1-m15-bias', name: 'H1 / M15 bias' },
-  { id: 'market-structure', name: 'Market structure (HH/HL)' },
+  { id: 'h1-m15-bias', name: 'H1 bias / direction' },
   { id: 'consolidation', name: 'Consolidation before break' },
   { id: 'level-id', name: 'Resistance level identified' },
   { id: 'breakout-close', name: 'Breakout close (not wick)' },
@@ -30,7 +22,21 @@ export const PHASE1_GATES: GateDef[] = [
   { id: 'risk-reward', name: 'Reward : Risk ≥ 1.5' },
 ]
 
-const GATE_NAME = new Map(PHASE1_GATES.map((g) => [g.id, g.name]))
+/** Supporting confirmations — evaluated but never blocking; shown beside the band. */
+export const SUPPORTING_GATES: GateDef[] = [
+  { id: 'market-structure', name: 'M15 structure' },
+  { id: 'ema9-alignment', name: 'EMA9 alignment' },
+]
+
+/** The review's three layers, grouping the 7 hard filters for the checklist. */
+export type ChecklistLayer = { title: string; ids: string[] }
+export const CHECKLIST_LAYERS: ChecklistLayer[] = [
+  { title: 'Market Filter', ids: ['h1-m15-bias', 'consolidation', 'level-id'] },
+  { title: 'Setup', ids: ['breakout-close', 'retest'] },
+  { title: 'Trigger', ids: ['confirmation', 'risk-reward'] },
+]
+
+const GATE_NAME = new Map([...PHASE1_GATES, ...SUPPORTING_GATES].map((g) => [g.id, g.name]))
 
 /** Friendly checklist name for a gate id; falls back to the raw id. */
 export function gateName(id: string): string {

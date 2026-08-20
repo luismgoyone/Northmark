@@ -2,79 +2,54 @@ import { describe, expect, it } from 'vitest'
 import type { GateResult } from '../types'
 import { score } from './score'
 
-/** Build `n` passing gate results (distinct ids). */
 const passes = (n: number): GateResult[] =>
   Array.from({ length: n }, (_, i) => ({ id: `pass-${i}`, status: 'pass', detail: '' }))
+const sup = (statuses: GateResult['status'][]): GateResult[] =>
+  statuses.map((s, i) => ({ id: `sup-${i}`, status: s, detail: '' }))
 
-describe('score', () => {
-  it('counts passing gates and bands 3 as wait', () => {
-    expect(score(passes(3))).toEqual({ passed: 3, band: 'wait', authorized: false })
+describe('score (band from authorization + supporting)', () => {
+  it('band is wait whenever not authorized, regardless of gate tally', () => {
+    expect(score(passes(7)).band).toBe('wait')
+    expect(score(passes(7), [], false, sup(['pass', 'pass'])).band).toBe('wait')
   })
 
-  it('bands 6 passing gates as building', () => {
-    expect(score(passes(6))).toEqual({ passed: 6, band: 'building', authorized: false })
+  it('authorized + all supporting pass → strong', () => {
+    expect(score(passes(7), [], true, sup(['pass', 'pass']))).toEqual({
+      passed: 7, band: 'strong', authorized: true,
+    })
   })
 
-  it('bands 9 passing gates as strong', () => {
-    expect(score(passes(9))).toEqual({ passed: 9, band: 'strong', authorized: false })
+  it('authorized + a supporting confirmation withheld → building', () => {
+    expect(score(passes(7), [], true, sup(['pass', 'wait'])).band).toBe('building')
   })
 
-  it('bands the boundary passed=4 as wait and passed=5 as building', () => {
-    expect(score(passes(4)).band).toBe('wait')
-    expect(score(passes(5)).band).toBe('building')
+  it('authorized with NO supporting checks → building (never strong without confirmation)', () => {
+    expect(score(passes(7), [], true, []).band).toBe('building')
   })
 
-  it('bands the boundary passed=7 as building and passed=8 as strong', () => {
-    expect(score(passes(7)).band).toBe('building')
-    expect(score(passes(8)).band).toBe('strong')
-  })
-
-  it('forces band to wait when any veto has status fail (passed unchanged)', () => {
+  it('a firing veto forces wait and demotes authorized', () => {
     const veto: GateResult = { id: 'x', status: 'fail', detail: '' }
-    expect(score(passes(9), [veto])).toEqual({ passed: 9, band: 'wait', authorized: false })
+    expect(score(passes(7), [veto], true, sup(['pass', 'pass']))).toEqual({
+      passed: 7, band: 'wait', authorized: false,
+    })
   })
 
-  it('does not override when all vetoes are wait (real Phase-1 output shape)', () => {
-    const phase1Vetoes: GateResult[] = [
-      { id: 'a', status: 'wait', detail: 'deferred' },
-      { id: 'b', status: 'wait', detail: 'deferred' },
-    ]
-    expect(score(passes(9), phase1Vetoes)).toEqual({ passed: 9, band: 'strong', authorized: false })
+  it('non-firing vetoes (wait/pass) do not override an authorized strong band', () => {
+    expect(score(passes(7), [{ id: 'a', status: 'wait', detail: '' }], true, sup(['pass', 'pass'])).band).toBe('strong')
+    expect(score(passes(7), [{ id: 'a', status: 'pass', detail: '' }], true, sup(['pass', 'pass'])).band).toBe('strong')
   })
 
-  it('does not override on a passing veto (status pass is cleared, not triggered)', () => {
-    const clearedVeto: GateResult = { id: 'a', status: 'pass', detail: '' }
-    expect(score(passes(9), [clearedVeto]).band).toBe('strong')
-  })
-
-  it('bands empty gates as wait with passed 0', () => {
-    expect(score([])).toEqual({ passed: 0, band: 'wait', authorized: false })
-  })
-
-  it('counts only pass status among mixed pass/fail/wait gates', () => {
+  it('passed counts only pass-status gates', () => {
     const mixed: GateResult[] = [
       { id: 'a', status: 'pass', detail: '' },
       { id: 'b', status: 'fail', detail: '' },
       { id: 'c', status: 'wait', detail: '' },
       { id: 'd', status: 'pass', detail: '' },
     ]
-    expect(score(mixed)).toEqual({ passed: 2, band: 'wait', authorized: false })
+    expect(score(mixed).passed).toBe(2)
   })
 
-  it('defaults vetoes to empty so a strong band is not overridden', () => {
-    expect(score(passes(8)).band).toBe('strong')
-  })
-
-  it('defaults authorized to false when the caller does not pass it', () => {
-    expect(score(passes(9)).authorized).toBe(false)
-  })
-
-  it('reports authorized true when the caller passes an already-authorized set with no firing veto', () => {
-    expect(score(passes(9), [], true).authorized).toBe(true)
-  })
-
-  it('forces authorized false when a veto fires, even if the caller claims authorized', () => {
-    const veto: GateResult = { id: 'x', status: 'fail', detail: '' }
-    expect(score(passes(9), [veto], true).authorized).toBe(false)
+  it('defaults: authorized false, band wait, passed 0 for empty input', () => {
+    expect(score([])).toEqual({ passed: 0, band: 'wait', authorized: false })
   })
 })

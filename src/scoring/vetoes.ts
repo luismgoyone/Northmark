@@ -13,9 +13,10 @@ import type { Config, GateResult } from '../types'
 //   - not independently evaluable yet → status 'wait', with an honest detail
 //
 // Phase 2 reality: 7 of the 18 conditions are a direct PROJECTION of the
-// ordered 8-gate required sequence evaluateSetup already computes (bias,
-// structure, consolidation, level-id, breakout-close, retest, confirmation,
-// risk-reward) — see WIRED_VETOES below. The remaining 11 are still not
+// ordered 7-gate hard-filter sequence evaluateSetup computes (bias,
+// consolidation, level-id, breakout-close, retest, confirmation, risk-reward
+// — M15 structure is a supporting check now, not in this sequence) — see
+// WIRED_VETOES below. The remaining 11 are still not
 // independently evaluable: 4 need live broker/session data this local MVP
 // cannot see (phase-3), and 7 need heuristic gates or setup data not yet
 // wired (phase-2 / phase-1-wiring). Those 11 stay 'wait'. Emitting 'pass' for
@@ -60,8 +61,8 @@ export const VETO_CATALOGUE: VetoSpec[] = [
 
 /**
  * The 7 wired vetoes: each is a direct PROJECTION of one gate in the ordered
- * 8-gate required sequence (checklist steps 1-9 & 14, `evaluateSetup`'s
- * `ORDER`). Maps veto id → the gate id it derives its status from.
+ * 7-gate hard-filter sequence (`evaluateSetup`'s `ORDER`). Maps veto id → the
+ * gate id it derives its status from.
  */
 const WIRED_VETOES: Record<string, string> = {
   'h1-bias-unclear': 'h1-m15-bias',
@@ -85,19 +86,8 @@ const EXTERNAL_DATA_DETAIL = 'Needs live broker/session data (not available loca
 const NOT_WIRED_DETAIL =
   'Not independently wired yet — the required-gate checklist covers the current setup state.'
 
-/**
- * Detail string for a FIRED ('fail') wired veto. Usually the catalogue label, but
- * `h1-bias-unclear` needs a special case: `bias.ts` returns the `h1-m15-bias` gate as
- * not-pass for TWO distinct reasons — unclear H1 structure OR EMA9 strongly disagreeing —
- * so claiming specifically "H1 direction is unclear" would be factually wrong in the EMA9
- * case (and the dedicated `ema9-disagrees` veto stays deferred). Distinguishing them
- * cleanly would require changing bias.ts (out of scope), so we soften the fired detail to
- * be accurate for both. The catalogue id/label are unchanged.
- */
 function firedDetail(spec: VetoSpec): string {
-  if (spec.id === 'h1-bias-unclear') {
-    return 'H1 bias not confirmed — unclear structure or EMA9 disagreement.'
-  }
+  if (spec.id === 'h1-bias-unclear') return 'H1 direction is unclear — no clean HH/HL or LH/LL.'
   return `${spec.label} is the active no-trade condition.`
 }
 

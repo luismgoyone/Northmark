@@ -120,7 +120,7 @@ describe('evaluateSetup', () => {
   it('always reports one GateResult per checklist row, in order', () => {
     const v = evaluateSetup(ctxAll(trendSeries('up', 6)), defaultConfig)
     expect(v.gates.map((g) => g.id)).toEqual([
-      'h1-m15-bias', 'market-structure', 'consolidation', 'level-id',
+      'h1-m15-bias', 'consolidation', 'level-id',
       'breakout-close', 'retest', 'confirmation', 'risk-reward',
     ])
   })
@@ -133,7 +133,7 @@ describe('evaluateSetup', () => {
 
     // Preconditions: bias passes on h1, structure passes on m15, consolidation/level-id pass
     // on this m5 slice.
-    expect(bias(ctx, defaultConfig).direction).toBe('long')
+    expect(bias(ctx).direction).toBe('long')
     expect(structure(m15, 'long').status).toBe('pass')
     expect(consolidation(m5, defaultConfig).status).toBe('pass')
     expect(levelId(m5, 'long').level).not.toBeNull()
@@ -153,7 +153,7 @@ describe('evaluateSetup', () => {
     const cfg = defaultConfig
 
     // Prove each precondition BEFORE asserting the setup, so this is non-vacuous.
-    expect(bias({ m5, m15, h1 }, cfg).direction).toBe('long')
+    expect(bias({ m5, m15, h1 }).direction).toBe('long')
     expect(structure(m15, 'long').status).toBe('pass')
     expect(consolidation(m5, cfg).status).toBe('pass')
     const { level } = levelId(m5, 'long')
@@ -171,6 +171,10 @@ describe('evaluateSetup', () => {
       // An authorized setup passed every required gate, so no wired veto can be the active
       // blocker — zero vetoes fire.
       expect(v.vetoes.filter((veto) => veto.status === 'fail')).toHaveLength(0)
+      // Both supporting confirmations agree (clean M15 structure + rising EMA9) → STRONG.
+      expect(v.supporting.find((s) => s.id === 'market-structure')?.status).toBe('pass')
+      expect(v.supporting.find((s) => s.id === 'ema9-alignment')?.status).toBe('pass')
+      expect(v.score.band).toBe('strong')
     }
   })
 
@@ -194,20 +198,23 @@ describe('evaluateSetup', () => {
     }
   })
 
-  it('blocks at market-structure when H1 bias is long but M15 structure independently disagrees', () => {
-    const h1 = trendSeries('up', 6) // drives bias long
-    const m15 = rangeSeries() // no clear structure on M15 (structureDirection === null)
+  it('does NOT block when M15 structure disagrees — it authorizes with a lowered (building) band', () => {
+    const h1 = trendSeries('up', 6) // bias long + rising EMA9 → EMA9 supporting passes
+    const m15 = rangeSeries() // M15 structure does NOT confirm long → that supporting check is withheld
     const m5 = fullNarrative()
     const cfg = defaultConfig
 
-    // Preconditions: bias is long from H1, but M15 structure independently does NOT confirm
-    // long — proves the two checks are decoupled (not vacuously both trivially true/false).
-    expect(bias({ m5, m15, h1 }, cfg).direction).toBe('long')
+    // Preconditions: bias long from H1, but M15 structure independently does not confirm.
+    expect(bias({ m5, m15, h1 }).direction).toBe('long')
     expect(structure(m15, 'long').status).not.toBe('pass')
 
     const v = evaluateSetup({ m5, m15, h1 }, cfg)
-    expect(v.status).toBe('wait')
-    if (v.status === 'wait') expect(v.blockedBy).toBe('market-structure')
+    expect(v.status).toBe('setup') // M15 structure is supporting now — it never blocks
+    if (v.status === 'setup') {
+      expect(v.score.authorized).toBe(true)
+      expect(v.supporting.find((s) => s.id === 'market-structure')?.status).not.toBe('pass')
+      expect(v.score.band).toBe('building') // authorized, but a supporting confirmation is missing
+    }
   })
 
   it('bounds the breakout scan after the level pivot: a pre-pivot spike above the level is not the breakout', () => {

@@ -2,58 +2,46 @@ import type { GateResult } from '../types'
 
 // Pure module, no I/O. Import direction is downward only (types).
 //
-// Tallies passing gates into a confidence band, then applies the veto override.
+// The band is DISPLAY conviction, derived from authorization + supporting agreement
+// (2026-08-20 reframe). It is NOT a raw pass tally, and it is never 'strong'/'building'
+// unless the setup is authorized. `passed` still reports the hard-gate tally for the meter.
 
 export type ScoreBand = 'wait' | 'building' | 'strong'
 
 export type Score = { passed: number; band: ScoreBand; authorized: boolean }
 
-// Band thresholds — Tier-2 default, anchored to MVP §4 endpoints
-// ("3–4 = WAIT, 8–10 = strong, per the user's rule"):
-//   passed <= 4        → 'wait'      (§4 lower endpoint: 4 is still WAIT)
-//   passed 5..7        → 'building'  (the gap between the two §4 endpoints)
-//   passed >= 8        → 'strong'    (§4 upper endpoint: 8 begins strong)
-// The §4 rule fixes the endpoints (4→wait, 8→strong); the 5–7 'building'
-// band bridges them. Documented here so the boundary choice is explicit.
-const WAIT_MAX = 4
-const STRONG_MIN = 8
-
 /**
- * Score a set of gate results into a confidence band.
+ * Score a setup into a confidence band.
  *
- * `passed` counts only gates with status 'pass' (fail/wait do not count).
+ * `passed` counts hard gates with status 'pass' (for the meter/count only).
  *
- * Veto override (bias-toward-WAIT): if `vetoes` contains ANY result with
- * status 'fail' — the convention from vetoes.ts for a TRIGGERED NO-TRADE
- * condition (a hard block) — the band is forced to 'wait' regardless of the
- * passed count. `passed` itself is left untouched (it reports the gate tally,
- * not the veto verdict). Vetoes with status 'wait' (deferred) or 'pass'
- * (cleared) do NOT override — in Phase 1 vetoes() returns all 'wait', so the
- * override never triggers yet, but the contract is honored. `vetoes` defaults
- * to empty → no override.
+ * `authorized` is caller-asserted, demoted to false whenever any veto fires
+ * (status 'fail'). score() never claims authorization on its own.
  *
- * `authorized` is DISPLAY-passthrough, not derived from the tally: it is
- * whatever the caller asserts (default `false`), demoted to `false` whenever
- * a veto fires. score() never sets `authorized = true` on its own — only the
- * required-gate sequence (evaluateSetup) may claim it, by explicitly passing
- * `authorized = true` once every required gate has passed.
+ * Band:
+ *   - not authorized (or a veto fired) → 'wait'
+ *   - authorized AND every supporting result passes → 'strong'
+ *   - authorized AND some/no supporting agreement    → 'building'
+ * Supporting checks NEVER block — they only raise/lower conviction here.
  */
-export function score(gateResults: GateResult[], vetoes: GateResult[] = [], authorized = false): Score {
+export function score(
+  gateResults: GateResult[],
+  vetoes: GateResult[] = [],
+  authorized = false,
+  supporting: GateResult[] = [],
+): Score {
   const passed = gateResults.filter((g) => g.status === 'pass').length
+  const vetoed = vetoes.some((v) => v.status === 'fail')
+  const auth = authorized && !vetoed
 
   let band: ScoreBand
-  if (passed <= WAIT_MAX) {
+  if (!auth) {
     band = 'wait'
-  } else if (passed >= STRONG_MIN) {
+  } else if (supporting.length > 0 && supporting.every((s) => s.status === 'pass')) {
     band = 'strong'
   } else {
     band = 'building'
   }
 
-  const vetoed = vetoes.some((v) => v.status === 'fail')
-  if (vetoed) {
-    band = 'wait'
-  }
-
-  return { passed, band, authorized: authorized && !vetoed }
+  return { passed, band, authorized: auth }
 }

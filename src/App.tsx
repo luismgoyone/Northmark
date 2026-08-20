@@ -203,7 +203,7 @@ export default function App(): ReactElement {
           </div>
         )}
 
-        <Score score={signal} gates={gates} verdict={verdict} total={gates.length} />
+        <Score score={signal} gates={gates} verdict={verdict} total={gates.length} supporting={result.supporting} />
 
         <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
           {demoPreset ? (

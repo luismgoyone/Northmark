@@ -36,5 +36,7 @@ export function structure(candles: Candle[], direction: Direction): GateResult {
   if (detected === direction) {
     return { id, status: 'pass', detail: `Structure confirms ${direction} (2+ ${direction === 'long' ? 'HH+HL' : 'LH+LL'}).` }
   }
-  return { id, status: 'wait', detail: `Structure is ${detected ?? 'unclear'}, not the candidate ${direction}. No trade.` }
+  // Non-pass is NOT a block: since the 2026-08-20 reframe this gate is a SUPPORTING
+  // confirmation (M15 structure), never a hard filter — so the detail must not say "No trade."
+  return { id, status: 'wait', detail: `Structure does not confirm ${direction} (${detected ?? 'unclear'}) — confirmation withheld, does not block.` }
 }

@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { GateResult } from '../types'
 import type { Score as ScoreValue } from '../scoring/score'
 import { STATUS_LABEL, STATUS_TONE } from './status-tokens'
+import { gateName } from './labels'
 
 /** Band → glyph. Kept local so the lozenge reads WAIT/BUILDING/STRONG at scale. */
 function bandGlyph(band: ScoreValue['band']): ReactElement {
@@ -43,12 +44,14 @@ export function Score({
   score,
   gates,
   verdict,
-  total = 8,
+  total = 7,
+  supporting = [],
 }: {
   score: ScoreValue
   gates: GateResult[]
   verdict: string
   total?: number
+  supporting?: GateResult[]
 }): ReactElement {
   const tone = STATUS_TONE[score.band]
   return (
@@ -70,6 +73,28 @@ export function Score({
           <b className="font-mono text-ink tabular-nums">{score.passed}</b> of{' '}
           <b className="font-mono text-ink tabular-nums">{total}</b> confirmations
         </span>
+        {supporting.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-3">Support</span>
+            {supporting.map((s) => (
+              <span
+                key={s.id}
+                className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[10.5px] font-semibold ${
+                  s.status === 'pass'
+                    ? 'border-pass-bd bg-pass-bg text-pass-fg'
+                    : 'border-border bg-surface-sunken text-ink-3'
+                }`}
+                title={s.detail}
+              >
+                <span aria-hidden="true">{s.status === 'pass' ? '✓' : '○'}</span>
+                {gateName(s.id)}
+                {/* Status as text, not color/glyph alone (docs/ui-spec §1) — the ✓/○ is
+                    aria-hidden, so a screen reader would otherwise hear only the name. */}
+                <span className="sr-only"> {s.status === 'pass' ? 'confirmed' : 'withheld'}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Plain-language sentence */}

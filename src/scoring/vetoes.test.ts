@@ -66,10 +66,10 @@ describe('VETO_CATALOGUE', () => {
   })
 })
 
-// The ordered 8-gate sequence evaluateSetup builds, per checklist steps 1-9 & 14.
+// The ordered 7-gate hard-filter sequence evaluateSetup builds (market-structure
+// is a supporting check now, not part of this sequence).
 const GATE_ORDER = [
   'h1-m15-bias',
-  'market-structure',
   'consolidation',
   'level-id',
   'breakout-close',
@@ -129,7 +129,6 @@ describe('vetoes()', () => {
   it('bias is the blocker → h1-bias-unclear fails, the other 6 wired vetoes wait (not reached), deferred wait', () => {
     const gates = gatesWith({
       'h1-m15-bias': 'wait',
-      'market-structure': 'wait',
       consolidation: 'wait',
       'level-id': 'wait',
       'breakout-close': 'wait',
@@ -151,49 +150,17 @@ describe('vetoes()', () => {
     expect(results.filter((r) => r.status === 'fail')).toHaveLength(1)
   })
 
-  it('fired h1-bias-unclear detail stays accurate for BOTH unclear-structure and EMA9-disagreement', () => {
-    // bias.ts blocks h1-m15-bias for two distinct reasons; the fired detail must not claim
-    // specifically "direction is unclear" (wrong in the EMA9 case).
+  it('fired h1-bias-unclear detail names the (now sole) unclear-structure cause', () => {
     const results = vetoes(gatesWith({ 'h1-m15-bias': 'fail' }), config)
     const fired = results.find((r) => r.id === 'h1-bias-unclear')!
     expect(fired.status).toBe('fail')
-    expect(fired.detail).toBe('H1 bias not confirmed — unclear structure or EMA9 disagreement.')
-  })
-
-  it('market-structure blocks → NO wired veto fires (it has no wired veto)', () => {
-    // market-structure (index 1) is the one gate with no wired veto mapped to it.
-    const gates = gatesWith({
-      'market-structure': 'fail',
-      consolidation: 'wait',
-      'level-id': 'wait',
-      'breakout-close': 'wait',
-      retest: 'wait',
-      confirmation: 'wait',
-      'risk-reward': 'wait',
-    })
-    const results = vetoes(gates, config)
-    const byId = statusById(results)
-
-    // Zero of the 7 wired vetoes fire — the block is on a gate none of them project from.
-    expect(results.filter((r) => r.status === 'fail')).toHaveLength(0)
-    // h1-m15-bias (index 0) passed, before the block → its veto is cleared.
-    expect(byId.get('h1-bias-unclear')).toBe('pass')
-    // The other 6 wired vetoes are downstream of the block → monitoring.
-    for (const vetoId of ['consolidating', 'no-meaningful-sr', 'breakout-unconfirmed', 'retest-missing', 'weak-confirmation', 'rr-insufficient']) {
-      expect(byId.get(vetoId)).toBe('wait')
-    }
-    for (const vetoId of DEFERRED_IDS) {
-      expect(byId.get(vetoId)).toBe('wait')
-    }
-    // Output shape is preserved.
-    expect(results).toHaveLength(18)
-    expect(results.map((r) => r.id)).toEqual(VETO_CATALOGUE.map((v) => v.id))
+    expect(fired.detail).toBe('H1 direction is unclear — no clean HH/HL or LH/LL.')
   })
 
   it('no-false-clear guard: an unmatched gate id yields wait, never a false pass', () => {
     // A truncated gate array (missing risk-reward) means rr-insufficient's mapped gate id
     // matches nothing → gi === -1. It must NOT silently clear to 'pass'.
-    const truncated: GateResult[] = GATE_ORDER.slice(0, 7).map((id) => ({
+    const truncated: GateResult[] = GATE_ORDER.slice(0, 6).map((id) => ({
       id,
       status: 'pass',
       detail: `stub for ${id}`,
@@ -251,7 +218,6 @@ describe('vetoes()', () => {
       gatesWith({ 'h1-m15-bias': 'wait' }),
       gatesWith({ 'risk-reward': 'fail' }),
       gatesWith({ consolidation: 'fail' }),
-      gatesWith({ 'market-structure': 'fail' }),
     ]
     for (const gates of scenarios) {
       const results = vetoes(gates, config)
