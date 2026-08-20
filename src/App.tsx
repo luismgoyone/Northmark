@@ -40,7 +40,7 @@ function toTradeSetup(v: Extract<SetupVerdict, { status: 'setup' }>, config: Con
   }
 }
 
-/** Last M5 candle time → wall-clock label, or a placeholder if unavailable. */
+/** Last M5 candle time → Philippine-time (Asia/Manila, UTC+8) wall-clock label. */
 function updatedLabel(ctx: MarketContext): string {
   const last = ctx.m5[ctx.m5.length - 1]
   if (!last) return '—'
@@ -48,7 +48,7 @@ function updatedLabel(ctx: MarketContext): string {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    timeZone: 'UTC',
+    timeZone: 'Asia/Manila',
   })
 }
 
@@ -86,7 +86,7 @@ function Header({
       {updated && (
         <span className="inline-flex items-center gap-[7px] font-mono text-[12.5px] text-ink-2">
           <span className="h-2 w-2 animate-live-dot rounded-full bg-pass-fg motion-reduce:animate-none" />
-          Updated {updated} UTC
+          Updated {updated} PHT
         </span>
       )}
 
