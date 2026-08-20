@@ -56,7 +56,7 @@ export function Score({
   const tone = STATUS_TONE[score.band]
   return (
     <section
-      className="mb-4 grid grid-cols-1 items-center gap-4 rounded-panel border border-border bg-surface px-5 py-[18px] shadow-panel md:grid-cols-[auto_1fr_auto] md:gap-8"
+      className="grid grid-cols-1 items-center gap-4 px-5 py-[18px] md:grid-cols-[auto_1fr_auto] md:gap-8"
       aria-label="Confidence signal"
     >
       {/* Band verdict */}
