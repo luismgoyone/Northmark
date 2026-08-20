@@ -5,6 +5,7 @@ import { defaultConfig } from './config'
 import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
 import { useMarketData } from './hooks/useMarketData'
 import { DEMO_PRESETS, type Mode } from './demo/presets'
+import { PriceTicker } from './ui/PriceTicker'
 import { Score } from './ui/Score'
 import { TradeCard, type TradeSetup } from './ui/TradeCard'
 import { VetoList } from './ui/VetoList'
@@ -202,6 +203,8 @@ export default function App(): ReactElement {
             Live refresh failed ({error.message}). Showing the last good data.
           </div>
         )}
+
+        <PriceTicker ctx={ctxForRender} />
 
         <Score score={signal} gates={gates} verdict={verdict} total={gates.length} supporting={result.supporting} />
 
