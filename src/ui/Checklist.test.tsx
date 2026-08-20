@@ -8,14 +8,17 @@ const gates: GateResult[] = [
   { id: 'risk-reward', status: 'fail', detail: 'R:R 1.3 below 1.5 minimum' },
 ]
 
-test('renders one numbered row per gate with its friendly name and detail', () => {
+test('renders one numbered row per gate with its friendly name and detail, under its layer', () => {
   render(<Checklist gates={gates} />)
-  expect(screen.getByText('H1 / M15 bias')).toBeInTheDocument()
+  expect(screen.getByText('H1 bias / direction')).toBeInTheDocument()
   expect(screen.getByText('Reward : Risk ≥ 1.5')).toBeInTheDocument()
   expect(screen.getByText('Both timeframes bullish')).toBeInTheDocument()
-  // Sequence numbers are zero-padded and encode process order.
+  // Continuous numbering across the layer groups.
   expect(screen.getByText('01')).toBeInTheDocument()
   expect(screen.getByText('03')).toBeInTheDocument()
+  // Layer headers present.
+  expect(screen.getByText('Market Filter')).toBeInTheDocument()
+  expect(screen.getByText('Trigger')).toBeInTheDocument()
 })
 
 test('every status carries a text label, never color alone', () => {
