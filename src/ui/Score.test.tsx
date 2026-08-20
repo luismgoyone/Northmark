@@ -59,3 +59,21 @@ test('renders no interactive buy/order/execute affordance', () => {
     screen.queryByRole('button', { name: /buy|order|execute|place/i }),
   ).not.toBeInTheDocument()
 })
+
+test('renders supporting confirmations beside the band with pass/withheld glyphs', () => {
+  render(
+    <Score
+      score={{ passed: 7, band: 'strong', authorized: true }}
+      gates={gatesWith(7, 7)}
+      verdict="Authorized."
+      total={7}
+      supporting={[
+        { id: 'market-structure', status: 'pass', detail: 'M15 confirms long' },
+        { id: 'ema9-alignment', status: 'wait', detail: 'EMA9 flat' },
+      ]}
+    />,
+  )
+  expect(screen.getByText('M15 structure')).toBeInTheDocument()
+  expect(screen.getByText('EMA9 alignment')).toBeInTheDocument()
+  expect(screen.getByText('Support')).toBeInTheDocument()
+})
