@@ -39,7 +39,7 @@ export function PriceTicker({ ctx }: { ctx: MarketContext }): ReactElement | nul
 
   return (
     <section
-      className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1.5 rounded-panel border border-border bg-surface px-5 py-4 shadow-panel"
+      className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5 border-b border-border px-5 py-3.5"
       aria-label="Current price"
     >
       <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">XAU/USD</span>

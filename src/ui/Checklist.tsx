@@ -33,7 +33,7 @@ export function Checklist({ gates }: { gates: GateResult[] }): ReactElement {
             <div className="border-b border-border bg-surface-sunken px-[18px] py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-3">
               {layer.title}
             </div>
-            <div className="grid grid-cols-1 gap-px bg-border md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-px bg-border">
               {layerGates.map((gate) => {
                 row += 1
                 return (

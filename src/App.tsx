@@ -204,9 +204,11 @@ export default function App(): ReactElement {
           </div>
         )}
 
-        <PriceTicker ctx={ctxForRender} />
-
-        <Score score={signal} gates={gates} verdict={verdict} total={gates.length} supporting={result.supporting} />
+        {/* One cohesive market panel: current price strip on top, verdict below. */}
+        <div className="mb-4 overflow-hidden rounded-panel border border-border bg-surface shadow-panel">
+          <PriceTicker ctx={ctxForRender} />
+          <Score score={signal} gates={gates} verdict={verdict} total={gates.length} supporting={result.supporting} />
+        </div>
 
         <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
           {demoPreset ? (
