@@ -112,7 +112,14 @@ No 4th band, no new thresholds, no new data.
 ## Non-Goals (explicitly deferred)
 
 - Breakout Expansion setup (Path B), volume analysis — spot-gold volume is unreliable.
-- Jason 9:30–9:45 EST time-window strategy, session clock, M1 candles.
+- Jason 9:30–9:45 EST time-window strategy, session clock, M1 candles. **Architecture
+  decided (its own future spec):** per `Northmark_Jason_First_M5_Check.md`, Jason is *not*
+  a separate strategy path or a multi-path dispatcher — it is a **time-gated first check at
+  the M5 stage** inside the one continuous H1→M15→M5 flow. When time ∈ 9:30–9:45 EST, run
+  the Jason check first; on PASS execute the Jason setup (after risk validation), on FAIL
+  **fall straight through to the normal Northmark M5 checks**. Jason failure must *never*
+  veto Northmark. The detector (area/range/confirmation), the session clock, and the volume
+  question are still unspecified and require their own brainstorm before implementation.
 - FVG / FCR detectors.
 - Multi-pathway OR dispatch across setups. This pass keeps the single Path-A chain.
 - Gating authorization on supporting-confirmation count.
@@ -124,6 +131,9 @@ No 4th band, no new thresholds, no new data.
   hard filter.
 - Stochastic may later fold into the supporting-confirmation set once its role is
   calibrated.
+- **Jason Priority Check** (next spec): a time-gated first check at the M5 stage
+  (9:30–9:45 EST), never-veto, falling through to the normal M5 checks on failure. Needs a
+  session clock and a deterministic detector before it can be built.
 
 ## Testing impact
 
