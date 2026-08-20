@@ -41,9 +41,10 @@ type TwelveDataResponse =
 /**
  * Fetch and normalize XAU/USD candles for the given timeframe.
  *
- * `time` is encoded as **epoch milliseconds** (UTC). Twelve Data returns `datetime`
- * as a UTC string like `'2026-08-14 12:05:00'`; we parse it as UTC so results are
- * stable regardless of the machine's local timezone.
+ * `time` is encoded as **epoch milliseconds** (UTC). The proxy requests
+ * `timezone=UTC` from Twelve Data (its default zone for XAU/USD is NOT UTC), so
+ * `datetime` arrives as a UTC string like `'2026-08-14 12:05:00'`; we parse it as
+ * UTC so results are stable regardless of the machine's local timezone.
  *
  * The returned array is sorted **ascending by time** (oldest first, newest last),
  * the opposite of the provider's newest-first ordering.
