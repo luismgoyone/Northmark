@@ -49,6 +49,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `${BASE_URL}?symbol=${encodeURIComponent(SYMBOL)}` +
     `&interval=${encodeURIComponent(interval)}` +
     `&outputsize=${encodeURIComponent(outputsize)}` +
+    // Force UTC: Twelve Data's DEFAULT timezone for XAU/USD is not UTC (it returned times
+    // ~10h ahead), but twelveData.ts parses these datetimes AS UTC. Requesting timezone=UTC
+    // makes that assumption true, so the header/chart clocks land on the right wall time.
+    `&timezone=UTC` +
     `&apikey=${encodeURIComponent(key)}`
 
   try {

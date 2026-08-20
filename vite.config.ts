@@ -60,6 +60,8 @@ function apiCandlesDevProxy(mode: string): Plugin {
           `${BASE_URL}?symbol=${encodeURIComponent(SYMBOL)}` +
           `&interval=${encodeURIComponent(interval)}` +
           `&outputsize=${encodeURIComponent(outputsize)}` +
+          // Force UTC — mirrors api/candles.ts; twelveData.ts parses datetimes as UTC.
+          `&timezone=UTC` +
           `&apikey=${encodeURIComponent(key)}`
 
         try {
