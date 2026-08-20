@@ -44,7 +44,7 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   }
 
   // 1. Bias → direction
-  const b = bias(ctx, config)
+  const b = bias(ctx)
   results.set('h1-m15-bias', b.result)
   if (b.result.status !== 'pass' || b.direction === null) return finish('h1-m15-bias', b.direction)
   const direction = b.direction

@@ -85,19 +85,8 @@ const EXTERNAL_DATA_DETAIL = 'Needs live broker/session data (not available loca
 const NOT_WIRED_DETAIL =
   'Not independently wired yet — the required-gate checklist covers the current setup state.'
 
-/**
- * Detail string for a FIRED ('fail') wired veto. Usually the catalogue label, but
- * `h1-bias-unclear` needs a special case: `bias.ts` returns the `h1-m15-bias` gate as
- * not-pass for TWO distinct reasons — unclear H1 structure OR EMA9 strongly disagreeing —
- * so claiming specifically "H1 direction is unclear" would be factually wrong in the EMA9
- * case (and the dedicated `ema9-disagrees` veto stays deferred). Distinguishing them
- * cleanly would require changing bias.ts (out of scope), so we soften the fired detail to
- * be accurate for both. The catalogue id/label are unchanged.
- */
 function firedDetail(spec: VetoSpec): string {
-  if (spec.id === 'h1-bias-unclear') {
-    return 'H1 bias not confirmed — unclear structure or EMA9 disagreement.'
-  }
+  if (spec.id === 'h1-bias-unclear') return 'H1 direction is unclear — no clean HH/HL or LH/LL.'
   return `${spec.label} is the active no-trade condition.`
 }
 

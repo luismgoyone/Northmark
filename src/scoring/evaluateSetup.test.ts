@@ -133,7 +133,7 @@ describe('evaluateSetup', () => {
 
     // Preconditions: bias passes on h1, structure passes on m15, consolidation/level-id pass
     // on this m5 slice.
-    expect(bias(ctx, defaultConfig).direction).toBe('long')
+    expect(bias(ctx).direction).toBe('long')
     expect(structure(m15, 'long').status).toBe('pass')
     expect(consolidation(m5, defaultConfig).status).toBe('pass')
     expect(levelId(m5, 'long').level).not.toBeNull()
@@ -153,7 +153,7 @@ describe('evaluateSetup', () => {
     const cfg = defaultConfig
 
     // Prove each precondition BEFORE asserting the setup, so this is non-vacuous.
-    expect(bias({ m5, m15, h1 }, cfg).direction).toBe('long')
+    expect(bias({ m5, m15, h1 }).direction).toBe('long')
     expect(structure(m15, 'long').status).toBe('pass')
     expect(consolidation(m5, cfg).status).toBe('pass')
     const { level } = levelId(m5, 'long')
@@ -202,7 +202,7 @@ describe('evaluateSetup', () => {
 
     // Preconditions: bias is long from H1, but M15 structure independently does NOT confirm
     // long — proves the two checks are decoupled (not vacuously both trivially true/false).
-    expect(bias({ m5, m15, h1 }, cfg).direction).toBe('long')
+    expect(bias({ m5, m15, h1 }).direction).toBe('long')
     expect(structure(m15, 'long').status).not.toBe('pass')
 
     const v = evaluateSetup({ m5, m15, h1 }, cfg)

@@ -151,13 +151,11 @@ describe('vetoes()', () => {
     expect(results.filter((r) => r.status === 'fail')).toHaveLength(1)
   })
 
-  it('fired h1-bias-unclear detail stays accurate for BOTH unclear-structure and EMA9-disagreement', () => {
-    // bias.ts blocks h1-m15-bias for two distinct reasons; the fired detail must not claim
-    // specifically "direction is unclear" (wrong in the EMA9 case).
+  it('fired h1-bias-unclear detail names the (now sole) unclear-structure cause', () => {
     const results = vetoes(gatesWith({ 'h1-m15-bias': 'fail' }), config)
     const fired = results.find((r) => r.id === 'h1-bias-unclear')!
     expect(fired.status).toBe('fail')
-    expect(fired.detail).toBe('H1 bias not confirmed — unclear structure or EMA9 disagreement.')
+    expect(fired.detail).toBe('H1 direction is unclear — no clean HH/HL or LH/LL.')
   })
 
   it('market-structure blocks → NO wired veto fires (it has no wired veto)', () => {
