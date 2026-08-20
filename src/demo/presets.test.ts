@@ -7,12 +7,14 @@ import { DEMO_PRESETS } from './presets'
 const byId = (id: string) => DEMO_PRESETS.find((p) => p.id === id)!
 
 describe('DEMO_PRESETS drive the engine to their intended verdicts', () => {
-  it('demo-setup → an authorized LONG setup', () => {
+  it('demo-setup → an authorized LONG setup with a STRONG band (both supporting pass)', () => {
     const v = evaluateSetup(byId('demo-setup').ctx, defaultConfig)
     expect(v.status).toBe('setup')
     if (v.status === 'setup') {
       expect(v.direction).toBe('long')
       expect(v.score.authorized).toBe(true)
+      expect(v.score.band).toBe('strong')
+      expect(v.supporting.every((s) => s.status === 'pass')).toBe(true)
       expect(v.lot).toBeGreaterThan(0)
     }
   })
@@ -22,10 +24,18 @@ describe('DEMO_PRESETS drive the engine to their intended verdicts', () => {
     expect(v.status).toBe('setup')
     if (v.status === 'setup') expect(v.lot).toBeCloseTo(0.2, 2)
   })
-  it('demo-building → WAIT blocked at retest', () => {
-    const v = evaluateSetup(byId('demo-building').ctx, defaultConfig)
-    expect(v.status).toBe('wait')
-    if (v.status === 'wait') expect(v.blockedBy).toBe('retest')
+  it('demo-building → authorized LONG with a BUILDING band (M15 structure withheld, EMA9 passes)', () => {
+    const preset = byId('demo-building')
+    const v = evaluateSetup(preset.ctx, preset.config ?? defaultConfig)
+    expect(v.status).toBe('setup')
+    if (v.status === 'setup') {
+      expect(v.direction).toBe('long')
+      expect(v.score.authorized).toBe(true)
+      expect(v.score.band).toBe('building')
+      // BUILDING (not STRONG) because exactly one supporting check is withheld: M15 structure.
+      expect(v.supporting.find((s) => s.id === 'market-structure')?.status).not.toBe('pass')
+      expect(v.supporting.find((s) => s.id === 'ema9-alignment')?.status).toBe('pass')
+    }
   })
   it('demo-wait → WAIT blocked at h1-m15-bias', () => {
     const v = evaluateSetup(byId('demo-wait').ctx, defaultConfig)

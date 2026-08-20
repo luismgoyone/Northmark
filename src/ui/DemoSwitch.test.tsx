@@ -7,8 +7,10 @@ test('live mode lists Live plus every demo preset, and renders neutral (not ambe
   const select = screen.getByLabelText('Data source') as HTMLSelectElement
   expect(select.value).toBe('live')
   expect(screen.getByRole('option', { name: 'Live' })).toBeInTheDocument()
-  expect(screen.getByRole('option', { name: 'Demo · Authorized LONG setup' })).toBeInTheDocument()
-  expect(screen.getByRole('option', { name: 'Demo · Building — blocked at retest' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: 'Demo · Authorized LONG — STRONG' })).toBeInTheDocument()
+  expect(
+    screen.getByRole('option', { name: 'Demo · Authorized LONG — BUILDING (M15 unconfirmed)' }),
+  ).toBeInTheDocument()
   expect(screen.getByRole('option', { name: 'Demo · WAIT — H1 bias unclear' })).toBeInTheDocument()
   expect(select.className).not.toMatch(/build-bg/)
 })

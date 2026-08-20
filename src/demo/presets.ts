@@ -17,8 +17,9 @@ const H1_STEP_MS = 60 * 60_000
 export const DEMO_PRESETS: DemoPreset[] = [
   {
     id: 'demo-setup',
-    label: 'Authorized LONG setup',
+    label: 'Authorized LONG — STRONG',
     // fullNarrative M5 + clean long structure on M15/H1 → status 'setup', direction 'long'.
+    // Both supporting checks agree (M15 structure confirms long, EMA9 rising) → STRONG band.
     ctx: {
       m5: withTimes(fullNarrative(), M5_STEP_MS),
       m15: withTimes(trendSeries('up', 6), M15_STEP_MS),
@@ -30,13 +31,19 @@ export const DEMO_PRESETS: DemoPreset[] = [
   },
   {
     id: 'demo-building',
-    label: 'Building — blocked at retest',
-    // A monotonic uptrend: breaks a level but never pulls back to hold the retest → wait@retest.
+    label: 'Authorized LONG — BUILDING (M15 unconfirmed)',
+    // Every one of the 7 HARD filters passes (fullNarrative M5 + H1 uptrend → bias long, EMA9
+    // rising), but M15 structure does NOT confirm long (range) → that SUPPORTING check is
+    // withheld, so the setup still AUTHORIZES but with a lowered BUILDING band (not STRONG).
+    // This is the reframe's headline case — a supporting disagreement lowers conviction without
+    // blocking the trade. Mirrors evaluateSetup.test's "M15 disagrees" scenario. Same $10k demo
+    // config as demo-setup so the trade card's lot stays legible.
     ctx: {
-      m5: withTimes(trendSeries('up', 6), M5_STEP_MS),
-      m15: withTimes(trendSeries('up', 6), M15_STEP_MS),
+      m5: withTimes(fullNarrative(), M5_STEP_MS),
+      m15: withTimes(rangeSeries(), M15_STEP_MS),
       h1: withTimes(trendSeries('up', 6), H1_STEP_MS),
     },
+    config: { ...defaultConfig, accountSize: 10_000 },
   },
   {
     id: 'demo-wait',
