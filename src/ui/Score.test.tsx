@@ -76,4 +76,8 @@ test('renders supporting confirmations beside the band with pass/withheld glyphs
   expect(screen.getByText('M15 structure')).toBeInTheDocument()
   expect(screen.getByText('EMA9 alignment')).toBeInTheDocument()
   expect(screen.getByText('Support')).toBeInTheDocument()
+  // Status is text, never color/glyph alone: the pass chip reads "confirmed", the
+  // withheld chip reads "withheld" (sr-only), so a screen reader can tell them apart.
+  expect(screen.getByText('confirmed')).toBeInTheDocument()
+  expect(screen.getByText('withheld')).toBeInTheDocument()
 })

@@ -5,9 +5,10 @@ import { VETO_CATALOGUE } from '../scoring/vetoes'
  * component files so React-Refresh sees only components there.
  *
  * The engine's `GateResult` carries an `id`, not a human name — the checklist
- * sequence and its wording are a UI concern, so they live here. App builds its
- * `GateResult[]` from `PHASE1_GATES` and passes the SAME array to both the
- * Checklist rows and the Score confirmation meter (one source of truth).
+ * sequence and its wording are a UI concern, so they live here. App passes the
+ * engine's hard-filter `GateResult[]` (the 7 gates in `PHASE1_GATES`) to both the
+ * Checklist rows and the Score confirmation meter; the two SUPPORTING checks
+ * (`SUPPORTING_GATES`) are rendered separately beside the band, never as blockers.
  */
 export type GateDef = { id: string; name: string }
 

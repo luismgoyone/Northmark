@@ -13,9 +13,10 @@ import type { Config, GateResult } from '../types'
 //   - not independently evaluable yet → status 'wait', with an honest detail
 //
 // Phase 2 reality: 7 of the 18 conditions are a direct PROJECTION of the
-// ordered 8-gate required sequence evaluateSetup already computes (bias,
-// structure, consolidation, level-id, breakout-close, retest, confirmation,
-// risk-reward) — see WIRED_VETOES below. The remaining 11 are still not
+// ordered 7-gate hard-filter sequence evaluateSetup computes (bias,
+// consolidation, level-id, breakout-close, retest, confirmation, risk-reward
+// — M15 structure is a supporting check now, not in this sequence) — see
+// WIRED_VETOES below. The remaining 11 are still not
 // independently evaluable: 4 need live broker/session data this local MVP
 // cannot see (phase-3), and 7 need heuristic gates or setup data not yet
 // wired (phase-2 / phase-1-wiring). Those 11 stay 'wait'. Emitting 'pass' for
@@ -60,8 +61,8 @@ export const VETO_CATALOGUE: VetoSpec[] = [
 
 /**
  * The 7 wired vetoes: each is a direct PROJECTION of one gate in the ordered
- * 8-gate required sequence (checklist steps 1-9 & 14, `evaluateSetup`'s
- * `ORDER`). Maps veto id → the gate id it derives its status from.
+ * 7-gate hard-filter sequence (`evaluateSetup`'s `ORDER`). Maps veto id → the
+ * gate id it derives its status from.
  */
 const WIRED_VETOES: Record<string, string> = {
   'h1-bias-unclear': 'h1-m15-bias',

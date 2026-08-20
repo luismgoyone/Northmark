@@ -66,7 +66,8 @@ describe('VETO_CATALOGUE', () => {
   })
 })
 
-// The ordered 8-gate sequence evaluateSetup builds, per checklist steps 1-9 & 14.
+// The ordered 7-gate hard-filter sequence evaluateSetup builds (market-structure
+// is a supporting check now, not part of this sequence).
 const GATE_ORDER = [
   'h1-m15-bias',
   'consolidation',

@@ -88,6 +88,9 @@ export function Score({
               >
                 <span aria-hidden="true">{s.status === 'pass' ? '✓' : '○'}</span>
                 {gateName(s.id)}
+                {/* Status as text, not color/glyph alone (docs/ui-spec §1) — the ✓/○ is
+                    aria-hidden, so a screen reader would otherwise hear only the name. */}
+                <span className="sr-only"> {s.status === 'pass' ? 'confirmed' : 'withheld'}</span>
               </span>
             ))}
           </div>
