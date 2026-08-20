@@ -1,6 +1,7 @@
 import type { Candle, Config, Direction, GateResult, MarketContext } from '../types'
 import { bias } from '../gates/bias'
 import { structure } from '../gates/structure'
+import { emaAlignment } from '../gates/emaAlignment'
 import { consolidation } from '../gates/consolidation'
 import { levelId } from '../gates/levelId'
 import { breakoutClose } from '../gates/breakoutClose'
@@ -12,11 +13,14 @@ import { vetoes } from './vetoes'
 import { score, type Score } from './score'
 
 export type SetupVerdict =
-  | { status: 'wait'; blockedBy: string; direction: Direction | null; gates: GateResult[]; vetoes: GateResult[]; score: Score }
-  | { status: 'setup'; direction: Direction; level: number; entry: number; sl: number; tp1: number; tp2: number; lot: number; gates: GateResult[]; vetoes: GateResult[]; score: Score }
+  | { status: 'wait'; blockedBy: string; direction: Direction | null; gates: GateResult[]; supporting: GateResult[]; vetoes: GateResult[]; score: Score }
+  | { status: 'setup'; direction: Direction; level: number; entry: number; sl: number; tp1: number; tp2: number; lot: number; gates: GateResult[]; supporting: GateResult[]; vetoes: GateResult[]; score: Score }
 
 const WAIT = (id: string): GateResult => ({ id, status: 'wait', detail: 'Not evaluated — an earlier required gate did not pass.' })
-const ORDER = ['h1-m15-bias', 'market-structure', 'consolidation', 'level-id', 'breakout-close', 'retest', 'confirmation', 'risk-reward'] as const
+
+// Hard required filters, in checklist order. M15 structure + EMA9 are SUPPORTING (below),
+// not in this sequence (2026-08-20 reframe).
+const ORDER = ['h1-m15-bias', 'consolidation', 'level-id', 'breakout-close', 'retest', 'confirmation', 'risk-reward'] as const
 
 /** Nearest significant OPPOSING level beyond `entry`, for the structural TP cap (checklist step 11). */
 function opposingLevel(candles: Candle[], direction: Direction, entry: number): number | undefined {
@@ -30,45 +34,37 @@ function opposingLevel(candles: Candle[], direction: Direction, entry: number): 
 }
 
 /**
- * Required-gate sequence (checklist steps 1→9 & 14). Runs the gates in order and
- * short-circuits to WAIT on the first that is not `pass`, naming it in `blockedBy`.
- * The score/band is DISPLAY-ONLY — `authorized` is driven by this sequence, never the tally.
- * Any firing veto forces WAIT regardless of the sequence.
+ * Required-gate sequence (hard filters) + supporting confirmations.
+ * Runs the 7 hard gates in order and short-circuits to WAIT on the first non-'pass',
+ * naming it in `blockedBy`. M15 structure + EMA9 alignment are evaluated as SUPPORTING
+ * once the direction is known — they never block; they only move the confidence band.
+ * `authorized` is driven by the hard sequence; any firing veto forces WAIT.
  */
 export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict {
   const results = new Map<string, GateResult>()
+  let supporting: GateResult[] = []
   const finish = (blockedBy: string, direction: Direction | null): SetupVerdict => {
     const gates = ORDER.map((id) => results.get(id) ?? WAIT(id))
     const vetoResults = vetoes(gates, config)
-    return { status: 'wait', blockedBy, direction, gates, vetoes: vetoResults, score: score(gates, vetoResults, false) }
+    return { status: 'wait', blockedBy, direction, gates, supporting, vetoes: vetoResults, score: score(gates, vetoResults, false, supporting) }
   }
 
-  // 1. Bias → direction
+  // 1. Bias → direction (hard filter)
   const b = bias(ctx)
   results.set('h1-m15-bias', b.result)
   if (b.result.status !== 'pass' || b.direction === null) return finish('h1-m15-bias', b.direction)
   const direction = b.direction
 
-  // 2. Structure — `bias` already derives `direction` from H1 structure, so re-checking H1
-  // here would be tautological (it would always pass once bias passed). Instead this gate is
-  // an INDEPENDENT confirmation on M15: H1 sets the primary direction, M15 must independently
-  // confirm the SAME direction still holds there (checklist step 2, gate id `h1-m15-bias`: H1
-  // bias + M15 confirmation). A divergent M15 structure now correctly blocks the setup.
-  const s = structure(ctx.m15, direction)
-  results.set('market-structure', s)
-  if (s.status !== 'pass') return finish('market-structure', direction)
+  // Supporting confirmations — evaluated now that direction is known; NEVER block.
+  // M15 structure (independent of the H1 bias that set direction) + H1 EMA9 alignment.
+  supporting = [structure(ctx.m15, direction), emaAlignment(ctx, direction, config)]
 
-  // 3. Consolidation (fail = NO-TRADE; only `pass` proceeds). This is a CURRENT-CHOP filter:
-  // it checks price is not ranging AT THE ENTRY MOMENT (the latest bars), per checklist step 3
-  // ("avoid initiating trades inside clear consolidation") — not that a base preceded the
-  // breakout. It intentionally stays on the trailing window rather than the pre-breakout slice,
-  // so it doesn't wrongly block classic base→breakout setups. A base→breakout QUALITY check
-  // would be a separate, inverted-polarity gate — deferred to Phase 2.5.
+  // 2. Consolidation (hard; CURRENT-CHOP filter — checklist step 3). fail = NO-TRADE.
   const con = consolidation(ctx.m5, config)
   results.set('consolidation', con)
   if (con.status !== 'pass') return finish('consolidation', direction)
 
-  // 4. Level-ID
+  // 3. Level-ID (hard)
   const lvl = levelId(ctx.m5, direction)
   results.set('level-id', lvl.result)
   if (lvl.result.status !== 'pass' || lvl.level === null) return finish('level-id', direction)
@@ -81,8 +77,7 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   const band = level * config.tolerances.retestBand
   const isLong = direction === 'long'
 
-  // Bound the breakout scan to AFTER the level's pivot formed — a resistance/support cannot be
-  // broken before it exists. `level` came directly off a swing bar, so match it with `===`.
+  // Bound the breakout scan to AFTER the level's pivot formed — a level cannot break before it exists.
   const { highs, lows } = swingPoints(c)
   let levelPivotIdx = -1
   const pivotIdxs = isLong ? highs : lows
@@ -93,11 +88,9 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
       break
     }
   }
-  // `level` always originates from a swing bar, so the pivot is expected to be found; if it
-  // somehow isn't, fall back to scanning the whole window (never silently skip a breakout).
   const scanStart = levelPivotIdx >= 0 ? levelPivotIdx + 1 : 0
 
-  // 5. Breakout: first bar AFTER the level's pivot that CLOSED beyond level ± buffer.
+  // 4. Breakout: first bar AFTER the level's pivot that CLOSED beyond level ± buffer.
   let breakoutIdx = -1
   for (let i = scanStart; i < c.length; i++) {
     const close = c[i]!.close
@@ -116,7 +109,7 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   }
   results.set('breakout-close', breakoutClose(c.slice(0, breakoutIdx + 1), level, direction, config))
 
-  // 6. Retest: first bar after the breakout that returned to the level; hold vs. fail by close.
+  // 5. Retest: first bar after the breakout that returned to the level; hold vs. fail by close.
   let retestIdx = -1
   for (let j = breakoutIdx + 1; j < c.length; j++) {
     const bar = c[j]!
@@ -132,7 +125,6 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
       })
       break
     }
-    // First touch broke back through the level → failed retest.
     results.set('retest', {
       id: 'retest',
       status: 'fail',
@@ -149,10 +141,7 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
     return finish('retest', direction)
   }
 
-  // 7. Confirmation: first continuation candle after the retest. But a bar that CLOSES back
-  // through the level BEFORE any confirmation forms is a whipsaw — structural invalidation.
-  // `confirmation()` is shape-only (never checks price vs. level), so we guard it here and stop
-  // scanning at the re-cross rather than accept a later, now-irrelevant bullish/bearish shape.
+  // 6. Confirmation: first continuation candle after the retest; a re-cross before it invalidates.
   let confirmIdx = -1
   for (let k = retestIdx + 1; k < c.length; k++) {
     const invalidated = isLong ? c[k]!.close < level : c[k]!.close > level
@@ -179,7 +168,7 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   }
   results.set('confirmation', confirmation(c.slice(0, confirmIdx + 1), direction))
 
-  // 8. Risk:reward — entry = latest close; SL = the broken level (structural invalidation).
+  // 7. Risk:reward — entry = latest close; SL = the broken level (structural invalidation).
   const entry = c[c.length - 1]!.close
   const sl = level
   const slDistance = Math.abs(entry - sl)
@@ -194,5 +183,5 @@ export function evaluateSetup(ctx: MarketContext, config: Config): SetupVerdict 
   if (vetoResults.some((v) => v.status === 'fail')) return finish('veto', direction)
 
   const lot = positionSize(config.accountSize, config.riskPct, slDistance, config.contractSize)
-  return { status: 'setup', direction, level, entry, sl, tp1, tp2, lot, gates, vetoes: vetoResults, score: score(gates, vetoResults, true) }
+  return { status: 'setup', direction, level, entry, sl, tp1, tp2, lot, gates, supporting, vetoes: vetoResults, score: score(gates, vetoResults, true, supporting) }
 }
