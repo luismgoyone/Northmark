@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
-import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers } from 'lightweight-charts'
-import type { UTCTimestamp } from 'lightweight-charts'
+import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers, TickMarkType } from 'lightweight-charts'
+import type { UTCTimestamp, Time } from 'lightweight-charts'
 import type { MarketContext, Candle } from '../types'
 import { emaSeries } from '../indicators/ema'
 import { stochasticSeries } from '../indicators/stochastic'
@@ -16,6 +16,29 @@ import { toCandlePoints, toLinePoints, toStochLines, toSwingMarkers } from './ch
  * (not `any`) is the correct, library-sanctioned way to bridge the two.
  */
 const asUtc = (t: number): UTCTimestamp => t as UTCTimestamp
+
+// The chart stores real UTC-second timestamps; these formatters only relabel the
+// axis + crosshair in Philippine time (Asia/Manila, UTC+8) so they match the header
+// clock. Data/positions are unchanged. Our `Time` values are always numeric seconds.
+const MANILA_TZ = 'Asia/Manila'
+function manilaLabel(time: Time, opts: Intl.DateTimeFormatOptions): string {
+  const sec = typeof time === 'number' ? time : 0
+  return new Date(sec * 1000).toLocaleString('en-GB', { timeZone: MANILA_TZ, hour12: false, ...opts })
+}
+function manilaTick(time: Time, tickMarkType: TickMarkType): string {
+  switch (tickMarkType) {
+    case TickMarkType.Year:
+      return manilaLabel(time, { year: 'numeric' })
+    case TickMarkType.Month:
+      return manilaLabel(time, { month: 'short', year: 'numeric' })
+    case TickMarkType.DayOfMonth:
+      return manilaLabel(time, { day: '2-digit', month: 'short' })
+    case TickMarkType.TimeWithSeconds:
+      return manilaLabel(time, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    default:
+      return manilaLabel(time, { hour: '2-digit', minute: '2-digit' })
+  }
+}
 
 type Timeframe = 'M5' | 'M15' | 'H1'
 const TIMEFRAMES: Timeframe[] = ['M5', 'M15', 'H1']
@@ -55,7 +78,17 @@ export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
       layout: { background: { color: surface }, textColor: ink2, attributionLogo: false },
       grid: { vertLines: { color: border }, horzLines: { color: border } },
       rightPriceScale: { borderColor: border },
-      timeScale: { borderColor: border, timeVisible: true, secondsVisible: false },
+      timeScale: {
+        borderColor: border,
+        timeVisible: true,
+        secondsVisible: false,
+        tickMarkFormatter: manilaTick,
+      },
+      // Crosshair time label in Philippine time too, to match the axis + header.
+      localization: {
+        timeFormatter: (time: Time) =>
+          manilaLabel(time, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      },
     })
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
