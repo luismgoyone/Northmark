@@ -100,7 +100,7 @@ export function SimPanel({ state, stats, onReset }: { state: SimState; stats: Si
                   }`}
                 >
                   {t.rMultiple >= 0 ? '+' : '−'}
-                  {Math.abs(t.rMultiple).toFixed(0)}R · {signed(Math.round(t.pnlCredits))}
+                  {Math.abs(t.rMultiple).toFixed(1)}R · {signed(Math.round(t.pnlCredits))}
                 </span>
               </div>
             ))
