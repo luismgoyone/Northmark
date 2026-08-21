@@ -40,3 +40,10 @@ test('renders no buy/order/execute affordance', () => {
   render(<SimPanel state={empty} stats={simStats(empty)} onReset={vi.fn()} />)
   expect(screen.queryByRole('button', { name: /buy|order|execute|place/i })).not.toBeInTheDocument()
 })
+
+test('recent trade rows carry a text label for result, not color/icon alone', () => {
+  const state: SimState = { startingBalance: 10_000, balance: 10_100, open: null, armed: true, nextId: 3, trades: [win('t1'), loss('t2')] }
+  render(<SimPanel state={state} stats={simStats(state)} onReset={vi.fn()} />)
+  expect(screen.getByText('win')).toBeInTheDocument()
+  expect(screen.getByText('loss')).toBeInTheDocument()
+})

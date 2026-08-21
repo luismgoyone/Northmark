@@ -90,6 +90,7 @@ export function SimPanel({ state, stats, onReset }: { state: SimState; stats: Si
                 className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-1.5 py-2 last:border-b-0"
               >
                 <StatusIcon status={t.result === 'win' ? 'pass' : 'fail'} size={20} />
+                <span className="sr-only">{t.result}</span>
                 <span className="font-mono text-[12.5px] text-ink-2">
                   {t.direction === 'long' ? 'LONG' : 'SHORT'} · {t.exitReason.toUpperCase()} @ {t.exit}
                 </span>
