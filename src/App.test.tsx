@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { beforeEach, vi } from 'vitest'
 import type { Candle, MarketContext } from './types'
 import type { UseMarketData } from './hooks/useMarketData'
 
@@ -8,6 +8,9 @@ const mockUseMarketData = vi.fn<() => UseMarketData>()
 vi.mock('./hooks/useMarketData', () => ({
   useMarketData: () => mockUseMarketData(),
 }))
+
+// The sim hook persists to localStorage — clear it between tests so state can't bleed.
+beforeEach(() => localStorage.clear())
 
 // PriceChart uses the real `lightweight-charts` canvas library, which jsdom can't
 // render. Stub it the same way `src/ui/PriceChart.test.tsx` does.
@@ -74,12 +77,13 @@ test('interactive controls are read-only (theme + chart timeframe) — no buy/or
     screen.queryByRole('button', { name: /buy|order|execute|place/i }),
   ).not.toBeInTheDocument()
   const buttons = screen.getAllByRole('button')
-  // Theme toggle + the chart's M5/M15/H1 timeframe toggle — all read-only.
-  expect(buttons).toHaveLength(4)
+  // Theme toggle + the chart's M5/M15/H1 timeframe toggle + the sim panel's Reset — all read-only.
+  expect(buttons).toHaveLength(5)
   expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'M15' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'H1' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
 })
 
 it('renders the price chart with a timeframe toggle when data is loaded', () => {

@@ -4,6 +4,7 @@ import type { Config, MarketContext } from './types'
 import { defaultConfig } from './config'
 import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
 import { useMarketData } from './hooks/useMarketData'
+import { useSim } from './hooks/useSim'
 import { DEMO_PRESETS, type Mode } from './demo/presets'
 import { PriceTicker } from './ui/PriceTicker'
 import { Score } from './ui/Score'
@@ -13,6 +14,7 @@ import { Checklist } from './ui/Checklist'
 import { PriceChart } from './ui/PriceChart'
 import { DemoSwitch } from './ui/DemoSwitch'
 import { DemoBanner } from './ui/DemoBanner'
+import { SimPanel } from './ui/SimPanel'
 
 /**
  * Build the TradeCard model from an authorized verdict. Entry/sl/tp1/tp2/lot
@@ -130,6 +132,17 @@ function Disclaimer(): ReactElement {
   )
 }
 
+/** A neutral verdict for the moment before live candles load — the sim ignores it (ctx is null). */
+const LOADING_VERDICT: SetupVerdict = {
+  status: 'wait',
+  blockedBy: 'loading',
+  direction: null,
+  gates: [],
+  supporting: [],
+  vetoes: [],
+  score: { passed: 0, band: 'wait', authorized: false },
+}
+
 function CenteredPanel({ children }: { children: ReactElement }): ReactElement {
   return (
     <div className="mx-auto grid min-h-[40vh] max-w-[1180px] place-items-center px-4 py-16">
@@ -148,6 +161,11 @@ export default function App(): ReactElement {
   const demoPreset = mode === 'live' ? null : DEMO_PRESETS.find((p) => p.id === mode) ?? null
   const activeCtx = demoPreset ? demoPreset.ctx : ctx
   const activeConfig = demoPreset?.config ?? config
+
+  // Compute the verdict once (null while live data loads) and drive the paper-trading sim.
+  // useSim must run on every render, so it sits above the loading early-return below.
+  const verdict = activeCtx ? evaluateSetup(activeCtx, activeConfig) : null
+  const sim = useSim(activeCtx, verdict ?? LOADING_VERDICT, mode === 'live', activeConfig)
 
   if (mode === 'live' && !activeCtx) {
     return (
@@ -180,11 +198,11 @@ export default function App(): ReactElement {
   }
 
   const ctxForRender = activeCtx as MarketContext
-  const result = evaluateSetup(ctxForRender, activeConfig)
+  const result = verdict as SetupVerdict
   const gates = result.gates
   const vetoResults = result.vetoes
   const signal = result.score
-  const verdict =
+  const verdictText =
     result.status === 'setup'
       ? `${result.direction.toUpperCase()} setup authorized — all required gates passed. Entry ${result.entry}, SL ${result.sl}.`
       : `Holding — first unmet gate: ${result.blockedBy}. Bias toward WAIT.`
@@ -207,7 +225,7 @@ export default function App(): ReactElement {
         {/* One cohesive market panel: current price strip on top, verdict below. */}
         <div className="mb-4 overflow-hidden rounded-panel border border-border bg-surface shadow-panel">
           <PriceTicker ctx={ctxForRender} />
-          <Score score={signal} gates={gates} verdict={verdict} total={gates.length} supporting={result.supporting} />
+          <Score score={signal} gates={gates} verdict={verdictText} total={gates.length} supporting={result.supporting} />
         </div>
 
         <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
@@ -233,6 +251,8 @@ export default function App(): ReactElement {
           <TradeCard setup={tradeSetup} />
           <VetoList vetoes={vetoResults} />
         </div>
+
+        {mode === 'live' && <SimPanel state={sim.state} stats={sim.stats} onReset={sim.reset} />}
 
         <Checklist gates={gates} />
         <Disclaimer />
