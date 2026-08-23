@@ -70,25 +70,33 @@ test('populated: WAIT band, bias veto active, pending trade card, live-signal no
   expect(screen.getByText(/never places orders/i)).toBeInTheDocument()
 })
 
-test('interactive controls are read-only (theme + chart timeframe) — no buy/order/execute', () => {
+test('interactive controls are read-only across tabs — no buy/order/execute anywhere', () => {
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
   expect(
     screen.queryByRole('button', { name: /buy|order|execute|place/i }),
   ).not.toBeInTheDocument()
-  const buttons = screen.getAllByRole('button')
-  // Theme toggle + the chart's M5/M15/H1 timeframe toggle + the sim panel's Reset — all read-only.
-  expect(buttons).toHaveLength(5)
+  // Default Signal tab: only the read-only theme toggle (the tabs carry role="tab", not "button").
   expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument()
+  expect(screen.getAllByRole('button')).toHaveLength(1)
+  // Chart tab exposes only the read-only M5/M15/H1 timeframe toggle.
+  fireEvent.click(screen.getByRole('tab', { name: 'Chart' }))
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'M15' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'H1' })).toBeInTheDocument()
+  // Paper tab exposes only Reset.
+  fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
   expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
+  // Nothing that places an order, on any tab we've visited.
+  expect(
+    screen.queryByRole('button', { name: /buy|order|execute|place/i }),
+  ).not.toBeInTheDocument()
 })
 
-it('renders the price chart with a timeframe toggle when data is loaded', () => {
+it('renders the price chart with a timeframe toggle in the Chart tab', () => {
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'Chart' }))
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
 })
 
@@ -114,7 +122,8 @@ test('selecting a demo preset shows the DEMO banner and a populated trade card, 
   ).not.toBeInTheDocument()
   // Never claim live assembly while showing an illustrative preset.
   expect(screen.queryByText(/Live signal assembly is active/)).not.toBeInTheDocument()
-  // The price chart now renders in demo mode too (demo candles carry real timestamps).
+  // The price chart renders in demo mode too (demo candles carry real timestamps) — Chart tab.
+  fireEvent.click(screen.getByRole('tab', { name: 'Chart' }))
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
 })
 

@@ -15,6 +15,15 @@ import { PriceChart } from './ui/PriceChart'
 import { DemoSwitch } from './ui/DemoSwitch'
 import { DemoBanner } from './ui/DemoBanner'
 import { SimPanel } from './ui/SimPanel'
+import { Tabs, type TabDef } from './ui/Tabs'
+
+type TabKey = 'signal' | 'chart' | 'paper' | 'checklist'
+const TABS: TabDef[] = [
+  { key: 'signal', label: 'Signal' },
+  { key: 'chart', label: 'Chart' },
+  { key: 'paper', label: 'Paper' },
+  { key: 'checklist', label: 'Checklist' },
+]
 
 /**
  * Build the TradeCard model from an authorized verdict. Entry/sl/tp1/tp2/lot
@@ -157,6 +166,7 @@ export default function App(): ReactElement {
   const [mode, setMode] = useState<Mode>('live')
   const { ctx, loading, error } = useMarketData(mode === 'live')
   const [config] = useState(defaultConfig)
+  const [tab, setTab] = useState<TabKey>('signal')
 
   const demoPreset = mode === 'live' ? null : DEMO_PRESETS.find((p) => p.id === mode) ?? null
   const activeCtx = demoPreset ? demoPreset.ctx : ctx
@@ -222,39 +232,57 @@ export default function App(): ReactElement {
           </div>
         )}
 
-        {/* One cohesive market panel: current price strip on top, verdict below. */}
+        {/* Pinned summary: current price + verdict, always above the tabs. */}
         <div className="mb-4 overflow-hidden rounded-panel border border-border bg-surface shadow-panel">
           <PriceTicker ctx={ctxForRender} />
           <Score score={signal} gates={gates} verdict={verdictText} total={gates.length} supporting={result.supporting} />
         </div>
 
-        <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
-          {demoPreset ? (
+        <Tabs tabs={TABS} active={tab} onChange={(k) => setTab(k as TabKey)} />
+
+        <div role="tabpanel">
+          {tab === 'signal' && (
             <>
-              <b className="font-semibold text-ink">Demo signal assembly.</b> This checklist and
-              trade card are computed by the same engine, run on the illustrative preset above —
-              not on real candles.
-            </>
-          ) : (
-            <>
-              <b className="font-semibold text-ink">Live signal assembly is active.</b> Structure,
-              level, breakout, retest, and confirmation are evaluated on real candles. The
-              checklist and trade card fill only when a real candidate setup forms — expect WAIT
-              most of the time.
+              <p className="mb-4 rounded-panel border border-border bg-surface-sunken px-4 py-2.5 text-[12px] text-ink-2">
+                {demoPreset ? (
+                  <>
+                    <b className="font-semibold text-ink">Demo signal assembly.</b> This checklist
+                    and trade card are computed by the same engine, run on the illustrative preset
+                    above — not on real candles.
+                  </>
+                ) : (
+                  <>
+                    <b className="font-semibold text-ink">Live signal assembly is active.</b>{' '}
+                    Structure, level, breakout, retest, and confirmation are evaluated on real
+                    candles. The trade card fills only when a real candidate setup forms — expect
+                    WAIT most of the time.
+                  </>
+                )}
+              </p>
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
+                <TradeCard setup={tradeSetup} />
+                <VetoList vetoes={vetoResults} />
+              </div>
             </>
           )}
-        </p>
 
-        <PriceChart ctx={ctxForRender} emaPeriod={activeConfig.ema.period} stoch={activeConfig.stoch} />
+          {tab === 'chart' && (
+            <PriceChart ctx={ctxForRender} emaPeriod={activeConfig.ema.period} stoch={activeConfig.stoch} />
+          )}
 
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
-          <TradeCard setup={tradeSetup} />
-          <VetoList vetoes={vetoResults} />
+          {tab === 'paper' &&
+            (mode === 'live' ? (
+              <SimPanel state={sim.state} stats={sim.stats} onReset={sim.reset} />
+            ) : (
+              <div className="rounded-panel border border-border bg-surface px-[18px] py-8 text-center text-[12.5px] text-ink-2 shadow-panel">
+                Paper trading records <b className="text-ink">Live-mode</b> trades only. Switch to
+                Live to build your record.
+              </div>
+            ))}
+
+          {tab === 'checklist' && <Checklist gates={gates} />}
         </div>
 
-        {mode === 'live' && <SimPanel state={sim.state} stats={sim.stats} onReset={sim.reset} />}
-
-        <Checklist gates={gates} />
         <Disclaimer />
       </div>
     </main>
