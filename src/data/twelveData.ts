@@ -1,4 +1,5 @@
 import type { Candle } from '../types'
+import { parseCandles, type TwelveDataValue } from './parseCandles'
 
 /**
  * Twelve Data fetch layer — the ONLY module in the codebase permitted to do I/O.
@@ -22,16 +23,6 @@ const INTERVAL: Record<Timeframe, string> = {
 
 /** How many bars to request per timeframe. Enough history to seed EMA9/stochastic. */
 const OUTPUT_SIZE = 200
-
-/** Raw shape of a single value row in a successful Twelve Data response. */
-type TwelveDataValue = {
-  datetime: string
-  open: string
-  high: string
-  low: string
-  close: string
-  volume?: string
-}
 
 /** Twelve Data returns either a success payload or an error object with the same `status` key. */
 type TwelveDataResponse =
@@ -69,38 +60,5 @@ export async function fetchCandles(tf: Timeframe): Promise<Candle[]> {
     throw new Error('Twelve Data response missing `values` array; cannot normalize candles.')
   }
 
-  return payload.values
-    .map(normalizeValue)
-    .sort((a, b) => a.time - b.time)
-}
-
-/** Parse one provider row (all strings, UTC datetime) into a numeric `Candle`. */
-function normalizeValue(v: TwelveDataValue): Candle {
-  const candle: Candle = {
-    time: parseUtcMillis(v.datetime),
-    open: Number(v.open),
-    high: Number(v.high),
-    low: Number(v.low),
-    close: Number(v.close),
-  }
-  if (v.volume !== undefined && v.volume !== '') {
-    candle.volume = Number(v.volume)
-  }
-  return candle
-}
-
-/**
- * Parse a Twelve Data `datetime` string as UTC epoch milliseconds.
- *
- * Twelve Data returns space-separated timestamps (`'2026-08-14 12:05:00'`) with no
- * zone. We treat them as UTC explicitly so parsing is deterministic across machines.
- * Date-only values (`'2026-08-14'`) already parse as UTC midnight.
- */
-function parseUtcMillis(datetime: string): number {
-  const iso = datetime.includes(' ') ? `${datetime.replace(' ', 'T')}Z` : datetime
-  const ms = Date.parse(iso)
-  if (Number.isNaN(ms)) {
-    throw new Error(`Unparseable Twelve Data datetime: "${datetime}".`)
-  }
-  return ms
+  return parseCandles(payload.values)
 }
