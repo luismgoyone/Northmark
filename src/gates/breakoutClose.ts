@@ -1,4 +1,4 @@
-import type { Candle, Config, Direction, GateResult } from '../types'
+import type { Candle, Config, Direction, GateResult } from '../types.js'
 
 /** XAUUSD pip→price: 0.01 per pip (checklist Section A). Buffer stays in PRICE units. */
 const PRICE_PER_PIP = 0.01

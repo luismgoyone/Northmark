@@ -1,4 +1,4 @@
-import type { SimState } from './types'
+import type { SimState } from './types.js'
 
 export type SimStats = {
   trades: number

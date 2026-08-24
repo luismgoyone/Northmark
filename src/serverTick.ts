@@ -1,7 +1,7 @@
-import type { Candle, Config, MarketContext } from './types'
-import type { SimConfig, SimState } from './sim/types'
-import { initialSimState } from './sim/engine'
-import { advanceSim } from './forwardTest'
+import type { Candle, Config, MarketContext } from './types.js'
+import type { SimConfig, SimState } from './sim/types.js'
+import { initialSimState } from './sim/engine.js'
+import { advanceSim } from './forwardTest.js'
 
 export const M15_MS = 15 * 60_000
 export const H1_MS = 60 * 60_000

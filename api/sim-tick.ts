@@ -1,10 +1,10 @@
 // api/sim-tick.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Redis } from '@upstash/redis'
-import { defaultConfig } from '../src/config'
-import { simConfigFrom } from '../src/sim/config'
-import { initBlob, planFetch, applyTick, applyLimit, type SimBlob } from '../src/serverTick'
-import { fetchCandles, CreditLimitError } from './_twelvedata'
+import { defaultConfig } from '../src/config.js'
+import { simConfigFrom } from '../src/sim/config.js'
+import { initBlob, planFetch, applyTick, applyLimit, type SimBlob } from '../src/serverTick.js'
+import { fetchCandles, CreditLimitError } from './_twelvedata.js'
 
 const KEY = 'sim:v1'
 const OUTPUT_SIZE = 200

@@ -1,4 +1,4 @@
-import type { Candle, Config, Direction, GateResult } from '../types'
+import type { Candle, Config, Direction, GateResult } from '../types.js'
 
 /**
  * Retest gate (checklist step 6). Requires, in order within the window:

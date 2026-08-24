@@ -1,5 +1,5 @@
-import type { Candle, Direction } from '../types'
-import type { SimConfig, SimPosition, SimState, SimTrade } from './types'
+import type { Candle, Direction } from '../types.js'
+import type { SimConfig, SimPosition, SimState, SimTrade } from './types.js'
 
 export type SetupSignal =
   | { authorized: true; direction: Direction; entry: number; sl: number; tp: number }

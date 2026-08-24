@@ -1,4 +1,4 @@
-import type { Candle } from '../types'
+import type { Candle } from '../types.js'
 
 // Number of bars required on EACH side of a pivot for it to qualify as a swing.
 // N=2 gives a classic 5-bar (Williams) fractal: the pivot plus two bars either

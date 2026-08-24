@@ -1,5 +1,5 @@
-import type { Config } from '../types'
-import type { SimConfig } from './types'
+import type { Config } from '../types.js'
+import type { SimConfig } from './types.js'
 
 /** Starting paper balance in credits. */
 export const SIM_STARTING_BALANCE = 10_000

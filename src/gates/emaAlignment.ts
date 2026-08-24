@@ -1,5 +1,5 @@
-import type { Config, Direction, GateResult, MarketContext } from '../types'
-import { ema } from '../indicators/ema'
+import type { Config, Direction, GateResult, MarketContext } from '../types.js'
+import { ema } from '../indicators/ema.js'
 
 /**
  * Supporting confirmation (NEVER blocks): H1 EMA9 slope agrees with the candidate
