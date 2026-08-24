@@ -1,0 +1,23 @@
+# .github/workflows/sim-tick.yml
+name: sim-tick
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+# Prevent overlapping runs if a tick is slow.
+concurrency:
+  group: sim-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the sim tick
+        env:
+          SECRET: ${{ secrets.SIM_TICK_SECRET }}
+        run: |
+          curl -fsS --max-time 60 \
+            "https://northmark-one.vercel.app/api/sim-tick?token=${SECRET}" \
+            -o /dev/null -w "tick HTTP %{http_code}\n"
