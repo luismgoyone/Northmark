@@ -1,5 +1,5 @@
-import type { Direction, GateResult, MarketContext } from '../types'
-import { structureDirection } from './structure'
+import type { Direction, GateResult, MarketContext } from '../types.js'
+import { structureDirection } from './structure.js'
 
 /**
  * Primary bias: direction from H1 market structure ONLY (2026-08-20 reframe).

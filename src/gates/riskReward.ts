@@ -1,4 +1,4 @@
-import type { Config, Direction, GateResult } from '../types'
+import type { Config, Direction, GateResult } from '../types.js'
 
 /**
  * Risk:Reward gate (checklist step 11). Direction-aware:

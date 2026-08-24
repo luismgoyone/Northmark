@@ -1,4 +1,4 @@
-import type { Candle } from '../types'
+import type { Candle } from '../types.js'
 
 export type StochResult = {
   k: number

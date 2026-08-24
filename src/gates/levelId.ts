@@ -1,5 +1,5 @@
-import type { Candle, Direction, GateResult } from '../types'
-import { swingPoints } from '../indicators/swingPoints'
+import type { Candle, Direction, GateResult } from '../types.js'
+import { swingPoints } from '../indicators/swingPoints.js'
 
 /**
  * The significant level price has ALREADY BROKEN for `direction` (temporal-narrative model):

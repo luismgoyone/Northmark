@@ -1,5 +1,5 @@
-import type { Candle, Config, GateResult } from '../types'
-import { ema } from '../indicators/ema'
+import type { Candle, Config, GateResult } from '../types.js'
+import { ema } from '../indicators/ema.js'
 
 /**
  * Consolidation = a clear range, detected from PRICE BEHAVIOR (checklist step 3 + the

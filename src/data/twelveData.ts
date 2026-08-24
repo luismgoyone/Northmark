@@ -1,5 +1,5 @@
-import type { Candle } from '../types'
-import { parseCandles, type TwelveDataValue } from './parseCandles'
+import type { Candle } from '../types.js'
+import { parseCandles, type TwelveDataValue } from './parseCandles.js'
 
 /**
  * Twelve Data fetch layer — the ONLY module in the codebase permitted to do I/O.

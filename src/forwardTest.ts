@@ -1,8 +1,8 @@
-import type { Config, MarketContext } from './types'
-import type { SetupVerdict } from './scoring/evaluateSetup'
-import { evaluateSetup } from './scoring/evaluateSetup'
-import { simStep, type SetupSignal } from './sim/engine'
-import type { SimState } from './sim/types'
+import type { Config, MarketContext } from './types.js'
+import type { SetupVerdict } from './scoring/evaluateSetup.js'
+import { evaluateSetup } from './scoring/evaluateSetup.js'
+import { simStep, type SetupSignal } from './sim/engine.js'
+import type { SimState } from './sim/types.js'
 
 /** Map an engine verdict to the sim's narrow signal (tp2 is the paper target). */
 export function verdictToSignal(verdict: SetupVerdict): SetupSignal {

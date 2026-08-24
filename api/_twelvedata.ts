@@ -1,7 +1,7 @@
 // api/_twelvedata.ts  (underscore prefix → not a route)
-import type { Candle } from '../src/types'
-import { parseCandles, type TwelveDataValue } from '../src/data/parseCandles'
-import { isCreditLimitError } from '../src/serverTick'
+import type { Candle } from '../src/types.js'
+import { parseCandles, type TwelveDataValue } from '../src/data/parseCandles.js'
+import { isCreditLimitError } from '../src/serverTick.js'
 
 const SYMBOL = 'XAU/USD'
 const BASE_URL = 'https://api.twelvedata.com/time_series'

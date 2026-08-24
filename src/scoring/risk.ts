@@ -4,7 +4,7 @@
 // (retest / swing low), never back-solved from a desired dollar loss. These
 // functions consume that distance; they never invent an SL from a $ target.
 
-import type { Direction } from '../types'
+import type { Direction } from '../types.js'
 
 /**
  * Lot size for a fixed-fractional risk model.

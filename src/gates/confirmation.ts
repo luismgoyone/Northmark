@@ -1,4 +1,4 @@
-import type { Candle, Direction, GateResult } from '../types'
+import type { Candle, Direction, GateResult } from '../types.js'
 
 /**
  * Confirmation candle (checklist step 7): a genuine continuation in the breakout

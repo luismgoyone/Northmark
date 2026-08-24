@@ -1,5 +1,5 @@
-import type { Candle, Direction, GateResult } from '../types'
-import { swingPoints } from '../indicators/swingPoints'
+import type { Candle, Direction, GateResult } from '../types.js'
+import { swingPoints } from '../indicators/swingPoints.js'
 
 /** Are the last `min` values strictly increasing? (needs ≥ `min` values) */
 function strictlyIncreasing(values: number[], min = 2): boolean {

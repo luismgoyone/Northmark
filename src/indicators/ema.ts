@@ -1,4 +1,4 @@
-import type { Candle } from '../types'
+import type { Candle } from '../types.js'
 
 /**
  * Exponential Moving Average (standard textbook convention).

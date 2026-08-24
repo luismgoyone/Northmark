@@ -1,4 +1,4 @@
-import type { GateResult } from '../types'
+import type { GateResult } from '../types.js'
 
 // Pure module, no I/O. Import direction is downward only (types).
 //

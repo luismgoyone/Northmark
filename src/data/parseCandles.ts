@@ -1,4 +1,4 @@
-import type { Candle } from '../types'
+import type { Candle } from '../types.js'
 
 /** Raw shape of a single value row in a successful Twelve Data response. */
 export type TwelveDataValue = {

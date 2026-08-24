@@ -1,9 +1,9 @@
 // api/sim-state.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Redis } from '@upstash/redis'
-import { defaultConfig } from '../src/config'
-import { simConfigFrom } from '../src/sim/config'
-import { initBlob, type SimBlob } from '../src/serverTick'
+import { defaultConfig } from '../src/config.js'
+import { simConfigFrom } from '../src/sim/config.js'
+import { initBlob, type SimBlob } from '../src/serverTick.js'
 
 const KEY = 'sim:v1'
 
