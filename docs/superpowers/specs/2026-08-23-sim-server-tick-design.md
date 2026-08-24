@@ -160,7 +160,14 @@ no stepping, no localStorage. On fetch failure it keeps the last good state (nev
 - Remove the **Reset** button and `onReset` prop (shared record; reset is admin-only now).
 - Add an optional honest note when `meta.limitReachedAt` is set and newer than `updatedAt`:
   *"Data limit reached at {PHT time} — updates resume after the provider's daily reset."*
-- Everything else (balance / win-rate / record / avg-R / trades) unchanged.
+- **Enrich the recent-trades rows** (the trade objects already carry every field). Each row shows:
+  direction (LONG/SHORT), **Entry** price, **Target (TP2)** price, **Exit** price + reason (TP/SL),
+  the **R multiple + credits P&L**, and the **date + time in PHT** (Asia/Manila) the trade closed —
+  e.g. `23 Aug, 9:50 PM`. Keep it a compact two-line row so it stays readable on mobile (line 1:
+  direction · Entry → Target · Exit; line 2: R · credits · date-time). A small `fmtPhtDateTime(ms)`
+  helper formats `closedAtTime` in Asia/Manila; the open time is available too (`openedAtTime`) if we
+  want an entered→closed range later.
+- Balance / win-rate / record / avg-R stat tiles unchanged.
 
 ### `App.tsx`
 
@@ -202,7 +209,8 @@ gracefully by the `limitReachedAt` note + auto-resume after the provider's daily
 - `src/hooks/useServerSim.test.ts`: fetches `/api/sim-state` on mount (mocked fetch), returns
   state/stats/meta, keeps last-good on a failed poll, cleans up its interval on unmount.
 - `src/ui/SimPanel.test.tsx`: update — no Reset button; renders the data-limit note when
-  `limitReachedAt > updatedAt`, hides it otherwise.
+  `limitReachedAt > updatedAt`, hides it otherwise; a trade row shows Entry, Target (TP), exit, R,
+  credits, and a PHT date-time. `fmtPhtDateTime` gets a small direct test (fixed epoch → PHT string).
 - Serverless handlers (`api/sim-tick.ts`, `api/sim-state.ts`) stay thin wrappers over the tested pure
   helpers; not unit-tested in jsdom (verified by the post-deploy smoke below).
 
