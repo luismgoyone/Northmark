@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { SimState } from '../sim/types'
 import type { SimStats } from '../sim/stats'
+import type { SimMeta } from '../hooks/useServerSim'
 import { StatusIcon } from './status'
 
 function credits(n: number): string {
@@ -8,6 +9,21 @@ function credits(n: number): string {
 }
 function signed(n: number): string {
   return `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+function fmt(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** Formats a timestamp as a short Philippine-time date + time, e.g. "23 Aug, 9:50 pm". */
+export function fmtPhtDateTime(ms: number): string {
+  return new Date(ms).toLocaleString('en-GB', {
+    timeZone: 'Asia/Manila',
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }): ReactElement {
@@ -22,12 +38,22 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'up
 
 /**
  * The paper-trading panel: a running credit balance + win-rate + record + avg R over the
- * forward-test, the open position (if any), and recent trades. Win-rate sits next to Avg R so
- * the number is read honestly. Read-only apart from Reset — no buy/order/execute control.
+ * shared, server-driven forward-test, the open position (if any), and recent trades. Win-rate
+ * sits next to Avg R so the number is read honestly. Read-only — no reset (reset is
+ * admin-only) and no buy/order/execute control.
  */
-export function SimPanel({ state, stats, onReset }: { state: SimState; stats: SimStats; onReset: () => void }): ReactElement {
+export function SimPanel({
+  state,
+  stats,
+  meta,
+}: {
+  state: SimState
+  stats: SimStats
+  meta: SimMeta
+}): ReactElement {
   const up = stats.pnlCredits >= 0
   const rSign = stats.avgR >= 0 ? '+' : '−'
+  const showLimit = meta.limitReachedAt !== null && meta.limitReachedAt > (meta.updatedAt ?? 0)
   return (
     <section className="mt-4 rounded-panel border border-border bg-surface shadow-panel" aria-label="Paper trading">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border px-[18px] py-[15px] pb-3">
@@ -37,13 +63,6 @@ export function SimPanel({ state, stats, onReset }: { state: SimState; stats: Si
             Paper · credits, not real money
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onReset}
-          className="text-[11px] font-semibold text-ink-3 underline underline-offset-2 hover:text-ink"
-        >
-          Reset
-        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-3 lg:grid-cols-5">
@@ -74,6 +93,13 @@ export function SimPanel({ state, stats, onReset }: { state: SimState; stats: Si
         </div>
       )}
 
+      {showLimit && meta.limitReachedAt !== null && (
+        <div className="border-t border-border bg-build-bg px-[18px] py-2.5 text-[12px] text-build-fg">
+          Data limit reached at {fmtPhtDateTime(meta.limitReachedAt)} PHT — updates resume after the
+          provider's daily reset.
+        </div>
+      )}
+
       <div className="px-[14px] py-2 pb-[14px]">
         {state.trades.length === 0 ? (
           <p className="m-0 px-1.5 py-3 text-[12.5px] text-ink-2">
@@ -85,23 +111,24 @@ export function SimPanel({ state, stats, onReset }: { state: SimState; stats: Si
             .slice(-8)
             .reverse()
             .map((t) => (
-              <div
-                key={t.id}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-1.5 py-2 last:border-b-0"
-              >
-                <StatusIcon status={t.result === 'win' ? 'pass' : 'fail'} size={20} />
-                <span className="sr-only">{t.result}</span>
-                <span className="font-mono text-[12.5px] text-ink-2">
-                  {t.direction === 'long' ? 'LONG' : 'SHORT'} · {t.exitReason.toUpperCase()} @ {t.exit}
-                </span>
-                <span
-                  className={`font-mono text-[12.5px] font-semibold tabular-nums ${
-                    t.result === 'win' ? 'text-pass-fg' : 'text-fail-fg'
-                  }`}
-                >
-                  {t.rMultiple >= 0 ? '+' : '−'}
-                  {Math.abs(t.rMultiple).toFixed(1)}R · {signed(Math.round(t.pnlCredits))}
-                </span>
+              <div key={t.id} className="border-b border-border px-1.5 py-2.5 last:border-b-0">
+                <div className="flex items-center gap-2.5">
+                  <StatusIcon status={t.result === 'win' ? 'pass' : 'fail'} size={20} />
+                  <span className="sr-only">{t.result}</span>
+                  <span className={`text-[12.5px] font-semibold ${t.direction === 'long' ? 'text-pass-fg' : 'text-fail-fg'}`}>
+                    {t.direction === 'long' ? 'LONG' : 'SHORT'}
+                  </span>
+                  <span className="font-mono text-[12px] text-ink-2">
+                    entry {fmt(t.entry)} → target {fmt(t.tp)} · {t.exitReason.toUpperCase()} @ {fmt(t.exit)}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 pl-[30px] font-mono text-[11.5px] text-ink-3">
+                  <span className={t.result === 'win' ? 'text-pass-fg' : 'text-fail-fg'}>
+                    {t.rMultiple >= 0 ? '+' : '−'}
+                    {Math.abs(t.rMultiple).toFixed(1)}R · {signed(Math.round(t.pnlCredits))}
+                  </span>
+                  <span>{fmtPhtDateTime(t.closedAtTime)} PHT</span>
+                </div>
               </div>
             ))
         )}

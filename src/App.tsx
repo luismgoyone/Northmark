@@ -4,7 +4,7 @@ import type { Config, MarketContext } from './types'
 import { defaultConfig } from './config'
 import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
 import { useMarketData } from './hooks/useMarketData'
-import { useSim } from './hooks/useSim'
+import { useServerSim } from './hooks/useServerSim'
 import { DEMO_PRESETS, type Mode } from './demo/presets'
 import { PriceTicker } from './ui/PriceTicker'
 import { Score } from './ui/Score'
@@ -141,17 +141,6 @@ function Disclaimer(): ReactElement {
   )
 }
 
-/** A neutral verdict for the moment before live candles load — the sim ignores it (ctx is null). */
-const LOADING_VERDICT: SetupVerdict = {
-  status: 'wait',
-  blockedBy: 'loading',
-  direction: null,
-  gates: [],
-  supporting: [],
-  vetoes: [],
-  score: { passed: 0, band: 'wait', authorized: false },
-}
-
 function CenteredPanel({ children }: { children: ReactElement }): ReactElement {
   return (
     <div className="mx-auto grid min-h-[40vh] max-w-[1180px] place-items-center px-4 py-16">
@@ -172,10 +161,11 @@ export default function App(): ReactElement {
   const activeCtx = demoPreset ? demoPreset.ctx : ctx
   const activeConfig = demoPreset?.config ?? config
 
-  // Compute the verdict once (null while live data loads) and drive the paper-trading sim.
-  // useSim must run on every render, so it sits above the loading early-return below.
+  // Compute the verdict once (null while live data loads) for the rest of the UI. The
+  // paper-trading sim is a read-only view of the shared server record — it must run on every
+  // render, so it sits above the loading early-return below.
   const verdict = activeCtx ? evaluateSetup(activeCtx, activeConfig) : null
-  const sim = useSim(activeCtx, verdict ?? LOADING_VERDICT, mode === 'live', activeConfig)
+  const sim = useServerSim()
 
   if (mode === 'live' && !activeCtx) {
     return (
@@ -272,11 +262,11 @@ export default function App(): ReactElement {
 
           {tab === 'paper' &&
             (mode === 'live' ? (
-              <SimPanel state={sim.state} stats={sim.stats} onReset={sim.reset} />
+              <SimPanel state={sim.state} stats={sim.stats} meta={sim.meta} />
             ) : (
               <div className="rounded-panel border border-border bg-surface px-[18px] py-8 text-center text-[12.5px] text-ink-2 shadow-panel">
-                Paper trading records <b className="text-ink">Live-mode</b> trades only. Switch to
-                Live to build your record.
+                Paper trading records the shared <b className="text-ink">Live</b> forward-test. Switch to Live
+                to view it.
               </div>
             ))}
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, vi } from 'vitest'
+import { afterEach, beforeEach, vi } from 'vitest'
 import type { Candle, MarketContext } from './types'
 import type { UseMarketData } from './hooks/useMarketData'
 
@@ -9,8 +9,14 @@ vi.mock('./hooks/useMarketData', () => ({
   useMarketData: () => mockUseMarketData(),
 }))
 
-// The sim hook persists to localStorage — clear it between tests so state can't bleed.
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  // Some UI state persists to localStorage — clear it between tests so state can't bleed.
+  localStorage.clear()
+  // useServerSim calls fetch('/api/sim-state'); stub it so the hook resolves without
+  // hitting the network and just keeps its initial (empty) state.
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })))
+})
+afterEach(() => vi.unstubAllGlobals())
 
 // PriceChart uses the real `lightweight-charts` canvas library, which jsdom can't
 // render. Stub it the same way `src/ui/PriceChart.test.tsx` does.
@@ -84,9 +90,10 @@ test('interactive controls are read-only across tabs — no buy/order/execute an
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'M15' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'H1' })).toBeInTheDocument()
-  // Paper tab exposes only Reset.
+  // Paper tab: the shared server record (no Reset — reset is admin-only).
   fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
-  expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument()
+  expect(screen.getByText(/credits, not real money/i)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
   // Nothing that places an order, on any tab we've visited.
   expect(
     screen.queryByRole('button', { name: /buy|order|execute|place/i }),
