@@ -1,6 +1,7 @@
 // src/ui/SimPanel.test.tsx
 import { render, screen } from '@testing-library/react'
-import { SimPanel, fmtPhtDateTime } from './SimPanel'
+import { SimPanel } from './SimPanel'
+import { fmtPhtDateTime } from './format'
 import { simStats } from '../sim/stats'
 import type { SimState } from '../sim/types'
 import type { SimMeta } from '../hooks/useServerSim'

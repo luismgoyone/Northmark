@@ -3,6 +3,7 @@ import type { SimState } from '../sim/types'
 import type { SimStats } from '../sim/stats'
 import type { SimMeta } from '../hooks/useServerSim'
 import { StatusIcon } from './status'
+import { fmtPhtDateTime } from './format'
 
 function credits(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -12,18 +13,6 @@ function signed(n: number): string {
 }
 function fmt(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** Formats a timestamp as a short Philippine-time date + time, e.g. "23 Aug, 9:50 pm". */
-export function fmtPhtDateTime(ms: number): string {
-  return new Date(ms).toLocaleString('en-GB', {
-    timeZone: 'Asia/Manila',
-    day: '2-digit',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
 }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }): ReactElement {
