@@ -26,12 +26,18 @@ export function advanceSim(
   ctx: MarketContext,
   config: Config,
 ): { state: SimState; lastProcessedTime: number | null } {
+  // First run: never backfill history. Seed the watermark to the latest candle and start
+  // recording forward from the next tick (no open/settle against historical candles).
+  if (lastProcessedTime === null) {
+    const latest = ctx.m5[ctx.m5.length - 1]
+    return { state, lastProcessedTime: latest ? latest.time : null }
+  }
   const signal = verdictToSignal(evaluateSetup(ctx, config))
   const simConfig = { startingBalance: state.startingBalance, riskPct: config.riskPct }
   let s = state
   let last = lastProcessedTime
   for (const candle of ctx.m5) {
-    if (last !== null && candle.time <= last) continue
+    if (candle.time <= last) continue
     s = simStep(s, signal, simConfig, candle)
     last = candle.time
   }
