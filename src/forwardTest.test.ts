@@ -28,7 +28,7 @@ function fullNarrative(): Candle[] {
   ]
 }
 
-const simConfig: SimConfig = { startingBalance: 10_000, riskPct: 0.01 }
+const simConfig: SimConfig = { startingBalance: 10_000, riskPct: 0.01, contractSize: 100 }
 const bar = (time: number, o: number, h: number, l: number, c: number): Candle => ({ time, open: o, high: h, low: l, close: c })
 
 const setup = (): SetupVerdict => ({

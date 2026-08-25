@@ -92,7 +92,7 @@ test('interactive controls are read-only across tabs — no buy/order/execute an
   expect(screen.getByRole('button', { name: 'H1' })).toBeInTheDocument()
   // Paper tab: the shared server record (no Reset — reset is admin-only).
   fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
-  expect(screen.getByText(/credits, not real money/i)).toBeInTheDocument()
+  expect(screen.getByText(/USD, not real money/i)).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
   // Nothing that places an order, on any tab we've visited.
   expect(

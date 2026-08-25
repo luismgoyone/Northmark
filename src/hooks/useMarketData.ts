@@ -104,8 +104,25 @@ export function useMarketData(enabled: boolean = true): UseMarketData {
       timers.push(boundaryTimeout)
     }
 
+    // Background tabs get their timers throttled/paused by the browser, so the poll goes stale
+    // while Northmark isn't the focused tab. Refetch all timeframes the moment it becomes visible
+    // again so the trader sees fresh data on return (a 10s guard prevents duplicate bursts from
+    // focus + visibilitychange firing together).
+    let lastRefreshAt = 0
+    const refreshIfVisible = (): void => {
+      if (!active || document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastRefreshAt < 10_000) return
+      lastRefreshAt = now
+      for (const tf of TIMEFRAMES) void loadOne(tf)
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
+
     return () => {
       active = false
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
       for (const t of timers) {
         clearTimeout(t)
         clearInterval(t)

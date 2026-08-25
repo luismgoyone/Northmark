@@ -49,7 +49,9 @@ function maybeOpen(state: SimState, signal: SetupSignal, config: SimConfig, cand
   const rewardDist = Math.abs(signal.tp - signal.entry)
   const riskCredits = state.balance * config.riskPct
   // Guard a degenerate setup / config that would size a bad position.
-  if (!(riskDist > 0) || !(riskCredits > 0) || !Number.isFinite(riskCredits)) return state
+  if (!(riskDist > 0) || !(riskCredits > 0) || !Number.isFinite(riskCredits) || !(config.contractSize > 0)) {
+    return state
+  }
   const pos: SimPosition = {
     id: `t${state.nextId}`,
     direction: signal.direction,
@@ -57,6 +59,8 @@ function maybeOpen(state: SimState, signal: SetupSignal, config: SimConfig, cand
     sl: signal.sl,
     tp: signal.tp,
     riskCredits,
+    // lots = dollars-at-risk / (stop distance in price * contract size per lot)
+    lot: riskCredits / (riskDist * config.contractSize),
     rr: rewardDist / riskDist,
     openedAtTime: candle.time,
   }
