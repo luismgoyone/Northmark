@@ -2,6 +2,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { version } from './package.json'
 
 const SYMBOL = 'XAU/USD'
 const BASE_URL = 'https://api.twelvedata.com/time_series'
@@ -83,6 +84,8 @@ function apiCandlesDevProxy(mode: string): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react(), apiCandlesDevProxy(mode)],
+  // Baked into the client bundle at build time; surfaced in the footer (see App.tsx).
+  define: { __APP_VERSION__: JSON.stringify(version) },
   test: {
     globals: true,
     environment: 'jsdom',

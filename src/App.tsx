@@ -137,6 +137,7 @@ function Disclaimer(): ReactElement {
       <b className="font-semibold text-ink-2">Read-only decision support.</b> Northmark scans and
       scores your checklist — it never places orders, holds funds, or auto-trades. You place the
       trade in your own broker. Not financial advice.
+      <span className="mt-1.5 block text-[10.5px] tracking-[0.04em] text-ink-3/70">v{__APP_VERSION__}</span>
     </footer>
   )
 }

@@ -1,0 +1,40 @@
+# .github/workflows/release.yml
+# Deploys production ONLY when a version tag (v*) is pushed. Auto-deploys on the
+# develop branch are disabled in vercel.json, so this is the sole path to prod.
+#   git tag v1.2.3 && git push origin v1.2.3
+name: release
+on:
+  push:
+    tags:
+      - 'v*'
+
+# One prod deploy at a time; never cancel an in-flight release.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+
+      - name: Pull production project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build for production
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy the prebuilt output to production
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
