@@ -83,6 +83,7 @@ export function SimPanel({
             entry {fmt(state.open.entry)} · SL {fmt(state.open.sl)} · TP {fmt(state.open.tp)} · lot{' '}
             {fmtLot(state.open.lot)} · risk {usd(state.open.riskCredits)}
           </span>
+          <span className="font-mono text-ink-3">opened {fmtPhtDateTime(state.open.openedAtTime)} PHT</span>
         </div>
       )}
 
@@ -112,7 +113,7 @@ export function SimPanel({
                     {t.direction === 'long' ? 'LONG' : 'SHORT'}
                   </span>
                   <span className="font-mono text-[12px] text-ink-2">
-                    entry {fmt(t.entry)} → target {fmt(t.tp)} · {t.exitReason.toUpperCase()} @ {fmt(t.exit)}
+                    entry {fmt(t.entry)} · SL {fmt(t.sl)} · TP {fmt(t.tp)} → {t.exitReason.toUpperCase()} @ {fmt(t.exit)}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 pl-[30px] font-mono text-[11.5px] text-ink-3">
@@ -123,7 +124,9 @@ export function SimPanel({
                   <span>
                     lot {fmtLot(t.lot)} · risk {usd(t.riskCredits)}
                   </span>
-                  <span>{fmtPhtDateTime(t.closedAtTime)} PHT</span>
+                  <span>
+                    opened {fmtPhtDateTime(t.openedAtTime)} → closed {fmtPhtDateTime(t.closedAtTime)} PHT
+                  </span>
                 </div>
               </div>
             ))

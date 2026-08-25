@@ -26,3 +26,5 @@ coverage
 
 # Superpowers SDD scratch (ledger, briefs, reports)
 .superpowers/
+.vercel
+.env*
