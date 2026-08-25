@@ -27,14 +27,15 @@ test('empty state + no reset button', () => {
   expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
 })
 
-test('a trade row shows entry, target, exit, R, USD P&L, lot, risk $, and a PHT date-time', () => {
+test('a trade row shows entry, SL, TP, exit, R, USD P&L, lot, risk $, and open→close PHT times', () => {
   const state: SimState = { ...empty, balance: 204, trades: [winTrade] }
   render(<SimPanel state={state} stats={simStats(state)} meta={NO_META} />)
   expect(screen.getByText(/4,473.37/)).toBeInTheDocument() // entry
-  expect(screen.getByText(/4,463.14/)).toBeInTheDocument() // target/exit
+  expect(screen.getByText(/4,478.48/)).toBeInTheDocument() // stop-loss
+  expect(screen.getByText(/4,463.14/)).toBeInTheDocument() // TP/exit
   expect(screen.getByText(/\+\$200.00/)).toBeInTheDocument() // USD P&L
   expect(screen.getByText(/lot 0.20 · risk \$100.00/)).toBeInTheDocument() // lot + amount risked
-  expect(screen.getByText(/23 Aug/)).toBeInTheDocument()
+  expect(screen.getByText(/opened 23 Aug.*→ closed 23 Aug.*PHT/)).toBeInTheDocument() // open + close window
   expect(screen.getByText('win')).toBeInTheDocument() // sr-only status label
 })
 
