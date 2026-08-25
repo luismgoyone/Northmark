@@ -3,7 +3,7 @@ import { simStats } from './stats'
 import type { SimState, SimTrade } from './types'
 
 const trade = (result: 'win' | 'loss', rMultiple: number, pnlCredits: number): SimTrade => ({
-  id: 't', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 100, rr: 2,
+  id: 't', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 100, lot: 0.2, rr: 2,
   openedAtTime: 0, exit: result === 'win' ? 110 : 95, exitReason: result === 'win' ? 'tp' : 'sl',
   result, rMultiple, pnlCredits, closedAtTime: 1,
 })

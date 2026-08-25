@@ -4,7 +4,7 @@ import { defaultConfig } from './config'
 import type { SimConfig } from './sim/types'
 import type { Candle } from './types'
 
-const simConfig: SimConfig = { startingBalance: 10_000, riskPct: 0.01 }
+const simConfig: SimConfig = { startingBalance: 10_000, riskPct: 0.01, contractSize: 100 }
 const flat = (t: number): Candle => ({ time: t, open: 100, high: 100, low: 100, close: 100 })
 
 describe('isDue', () => {

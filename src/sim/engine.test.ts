@@ -3,7 +3,7 @@ import { initialSimState, simStep, type SetupSignal } from './engine'
 import type { SimConfig } from './types'
 import type { Candle } from '../types'
 
-const config: SimConfig = { startingBalance: 10_000, riskPct: 0.01 }
+const config: SimConfig = { startingBalance: 10_000, riskPct: 0.01, contractSize: 100 }
 const candle = (time: number, high: number, low: number): Candle => ({
   time, open: (high + low) / 2, high, low, close: (high + low) / 2,
 })
@@ -21,7 +21,8 @@ describe('sim engine', () => {
 
   it('opens one long position on an authorized setup (1% risk)', () => {
     const s = simStep(initialSimState(config), longSig, config, candle(1, 101, 99))
-    expect(s.open).toMatchObject({ direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 100, rr: 2 })
+    // lot = riskUSD 100 / (stopDist 5 * contractSize 100) = 0.2
+    expect(s.open).toMatchObject({ direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 100, lot: 0.2, rr: 2 })
     expect(s.armed).toBe(false)
     expect(s.nextId).toBe(2)
   })

@@ -33,7 +33,11 @@ export function advanceSim(
     return { state, lastProcessedTime: latest ? latest.time : null }
   }
   const signal = verdictToSignal(evaluateSetup(ctx, config))
-  const simConfig = { startingBalance: state.startingBalance, riskPct: config.riskPct }
+  const simConfig = {
+    startingBalance: state.startingBalance,
+    riskPct: config.riskPct,
+    contractSize: config.contractSize,
+  }
   let s = state
   let last = lastProcessedTime
   for (const candle of ctx.m5) {
