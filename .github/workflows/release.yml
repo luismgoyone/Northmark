@@ -1,12 +1,14 @@
 # .github/workflows/release.yml
-# Deploys production ONLY when a version tag (v*) is pushed. Auto-deploys on the
+# Deploys production when a GitHub Release is published. Auto-deploys on the
 # develop branch are disabled in vercel.json, so this is the sole path to prod.
-#   git tag v1.2.3 && git push origin v1.2.3
+# Publish a release (which creates its tag) from the GitHub Releases UI or:
+#   gh release create v1.2.3 --title v1.2.3 --notes "..."
+# workflow_dispatch is kept for manual re-deploys / debugging.
 name: release
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch: {}
 
 # One prod deploy at a time; never cancel an in-flight release.
 concurrency:
@@ -20,6 +22,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # The team that owns the project (from `vercel link` → luisgoyonees-projects/northmark).
+      VERCEL_SCOPE: luisgoyonees-projects
     steps:
       - uses: actions/checkout@v4
 
@@ -30,11 +34,14 @@ jobs:
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
+      - name: Identify the token (diagnostic — which account/team can it see?)
+        run: vercel whoami --token="$VERCEL_TOKEN" || true
+
       - name: Pull production project settings
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: vercel pull --yes --environment=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"
 
       - name: Build for production
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy the prebuilt output to production
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: vercel deploy --prebuilt --prod --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"
