@@ -6,7 +6,7 @@ import { simConfigFrom } from '../src/sim/config.js'
 import { initBlob, planFetch, applyTick, applyLimit, type SimBlob } from '../src/serverTick.js'
 import { fetchCandles, CreditLimitError } from './_twelvedata.js'
 
-const KEY = 'sim:v1'
+const KEY = 'sim:v2'
 const OUTPUT_SIZE = 200
 
 /**
@@ -64,7 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const h1 = plan.h1 ? await fetchCandles('1h', OUTPUT_SIZE) : undefined
     const next = applyTick(blob, { m5, m15, h1 }, defaultConfig, now)
     await redis.set(KEY, next)
-    res.status(200).json({ ok: true, trades: next.state.trades.length, balance: next.state.balance })
+    res.status(200).json({
+      ok: true,
+      dad: { trades: next.state.trades.length, balance: next.state.balance },
+      claude: { trades: next.claudeState.trades.length, balance: next.claudeState.balance },
+    })
   } catch (err) {
     if (err instanceof CreditLimitError) {
       await redis.set(KEY, applyLimit(blob, now))
