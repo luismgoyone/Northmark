@@ -172,8 +172,8 @@ export default function App(): ReactElement {
   const verdict = activeCtx ? evaluateSetup(activeCtx, activeConfig) : null
   // The Claude engine runs on the same candle: last M5 close is `now`, empty events in Phase 1.
   const now = activeCtx?.m5[activeCtx.m5.length - 1]?.time ?? 0
-  const claudeVerdict = activeCtx ? evaluateSetupClaude(activeCtx, activeConfig, now, []) : null
   const sim = useServerSim()
+  const claudeVerdict = activeCtx ? evaluateSetupClaude(activeCtx, activeConfig, now, sim.news) : null
 
   if (mode === 'live' && !activeCtx) {
     return (
@@ -265,6 +265,10 @@ export default function App(): ReactElement {
                   </div>
                 </StrategySection>
                 <StrategySection engine="claude" subtitle="my criteria">
+                  <div className="mb-2 inline-flex items-center gap-1.5 rounded-chip border border-border bg-surface-sunken px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-ink-3">
+                    <span className={`h-1.5 w-1.5 rounded-full ${sim.meta.newsActive ? 'bg-pass-fg' : 'bg-ink-3'}`} />
+                    News feed: {sim.meta.newsActive ? 'on' : 'off'}
+                  </div>
                   {claudeVerdict ? (
                     <ClaudeSignal verdict={claudeVerdict} />
                   ) : (
