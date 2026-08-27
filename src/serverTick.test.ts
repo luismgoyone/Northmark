@@ -41,6 +41,17 @@ describe('applyTick', () => {
   })
 })
 
+describe('initBlob', () => {
+  it('seeds Dad and Claude accounts identically (same economics)', () => {
+    const simConfig = { startingBalance: 200, riskPct: 0.01, contractSize: 100 }
+    const blob = initBlob(simConfig)
+    expect(blob.claudeState.startingBalance).toBe(blob.state.startingBalance)
+    expect(blob.claudeState.balance).toBe(blob.state.balance)
+    expect(blob.claudeState.trades).toHaveLength(0)
+    expect(blob.claudeLastProcessedTime).toBeNull()
+  })
+})
+
 describe('applyLimit', () => {
   it('stamps the limit time and does not touch state', () => {
     const blob = initBlob(simConfig)

@@ -9,6 +9,8 @@ export const H1_MS = 60 * 60_000
 export type SimBlob = {
   state: SimState
   lastProcessedTime: number | null
+  claudeState: SimState
+  claudeLastProcessedTime: number | null
   m15: Candle[]
   h1: Candle[]
   m15FetchedAt: number | null
@@ -21,6 +23,8 @@ export function initBlob(simConfig: SimConfig): SimBlob {
   return {
     state: initialSimState(simConfig),
     lastProcessedTime: null,
+    claudeState: initialSimState(simConfig),
+    claudeLastProcessedTime: null,
     m15: [],
     h1: [],
     m15FetchedAt: null,
