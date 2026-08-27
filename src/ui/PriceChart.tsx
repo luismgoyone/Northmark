@@ -175,19 +175,24 @@ export function PriceChart({ ctx, emaPeriod, stoch, dadState, claudeState, live 
       emaLine.applyOptions({ color: themedBrand })
       kLine.applyOptions({ color: themedInk2 })
       dLine.applyOptions({ color: themedBrand })
-      createSeriesMarkers(candleSeries, [
+      // Concatenating two independently-sorted lists is NOT globally sorted;
+      // lightweight-charts v5 binary-searches markers in input order and silently
+      // drops any that break ascending-by-time, so re-sort the merged array.
+      const themedMarkers = [
         ...toSwingMarkers(candles, swings, { high: themedDown, low: themedUp }).map((m) => ({
           ...m,
           time: asUtc(m.time),
         })),
         ...tradeMarkerData(themedUp, themedDown),
-      ])
+      ].sort((a, b) => (a.time as number) - (b.time as number))
+      createSeriesMarkers(candleSeries, themedMarkers)
     }
 
-    createSeriesMarkers(candleSeries, [
+    const markers = [
       ...toSwingMarkers(candles, swings, { high: down, low: up }).map((m) => ({ ...m, time: asUtc(m.time) })),
       ...tradeMarkerData(up, down),
-    ])
+    ].sort((a, b) => (a.time as number) - (b.time as number))
+    createSeriesMarkers(candleSeries, markers)
 
     chart.timeScale().fitContent()
 

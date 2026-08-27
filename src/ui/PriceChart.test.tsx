@@ -34,11 +34,29 @@ vi.mock('lightweight-charts', () => ({
 }))
 
 import { PriceChart } from './PriceChart'
-import type { SimState } from '../sim/types'
+import type { SimState, SimTrade } from '../sim/types'
 
 const openState: SimState = {
   startingBalance: 200, balance: 200, armed: false, nextId: 2, trades: [],
   open: { id: 'p1', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 2, lot: 0.1, rr: 2, openedAtTime: 60_000 },
+}
+
+// A closed trade that OPENS on an early candle (time 180s) — earlier than a swing
+// high that forms on a later candle. Its marker must interleave BEFORE that swing
+// marker, so a naive [...swings, ...trades] concat is out of order.
+const interleavedTrade: SimTrade = {
+  id: 't1', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 2, lot: 0.1, rr: 2,
+  openedAtTime: 180_000, exit: 110, exitReason: 'tp', result: 'win', rMultiple: 2, pnlCredits: 4, closedAtTime: 240_000,
+}
+
+// Flat candles with a single strict swing high at a LATE index (15 → time 960s),
+// which is well after the trade's open candle (index 2 → time 180s).
+const swingSeries = (): Candle[] => {
+  const arr: Candle[] = Array.from({ length: 20 }, (_, i) => ({
+    time: (i + 1) * 60_000, open: 100, high: 101, low: 99, close: 100,
+  }))
+  arr[15] = { ...arr[15]!, high: 105 }
+  return arr
 }
 
 const series = (n: number): Candle[] =>
@@ -133,5 +151,23 @@ describe('PriceChart', () => {
   it('draws no overlays when not live', () => {
     render(<PriceChart {...props} live={false} dadState={openState} claudeState={openState} />)
     expect(createPriceLineMock).not.toHaveBeenCalled()
+  })
+
+  it('passes markers to createSeriesMarkers globally sorted by time (trade interleaved before a later swing)', () => {
+    const candles = swingSeries()
+    const swingCtx = { m5: candles, m15: candles, h1: candles }
+    const dad: SimState = { startingBalance: 200, balance: 200, armed: false, nextId: 2, open: null, trades: [interleavedTrade] }
+    const claude: SimState = { ...dad, trades: [] }
+
+    render(
+      <PriceChart ctx={swingCtx} emaPeriod={9} stoch={{ k: 14, d: 3, smooth: 3 }} live dadState={dad} claudeState={claude} />
+    )
+
+    const arr = createSeriesMarkersMock.mock.calls.at(-1)![1] as Array<{ time: number; text?: string }>
+    // The merged array must be globally ascending by time — a concat of two sorted
+    // lists is NOT, which silently drops markers in lightweight-charts v5.
+    expect(arr).toEqual([...arr].sort((a, b) => a.time - b.time))
+    // ...and a trade marker must actually be present (guards against a vacuous pass).
+    expect(arr.some((m) => m.text?.startsWith?.('D') || m.text === 'D' || m.text?.startsWith?.('C:'))).toBe(true)
   })
 })
