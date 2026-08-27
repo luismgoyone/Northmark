@@ -87,4 +87,16 @@ describe('sim engine', () => {
     const s = simStep(initialSimState(config), bad, config, candle(1, 101, 99))
     expect(s.open).toBeNull()
   })
+
+  it('tags the opened position and resulting trade with the signal grade', () => {
+    const config = { startingBalance: 200, riskPct: 0.01, contractSize: 100 }
+    let s = initialSimState(config)
+    const signal: SetupSignal = { authorized: true, direction: 'long', entry: 100, sl: 95, tp: 110, grade: 'A' }
+    // Open on a candle that neither hits SL nor TP.
+    s = simStep(s, signal, config, { time: 1, open: 100, high: 101, low: 99, close: 100 })
+    expect(s.open?.grade).toBe('A')
+    // Close it on a candle that hits TP → the trade inherits the grade.
+    s = simStep(s, { authorized: false }, config, { time: 2, open: 100, high: 111, low: 100, close: 110 })
+    expect(s.trades[0]?.grade).toBe('A')
+  })
 })

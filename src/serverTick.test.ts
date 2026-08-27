@@ -39,6 +39,28 @@ describe('applyTick', () => {
     expect(refetched.m15).toEqual([flat(2)])
     expect(refetched.m15FetchedAt).toBe(1000)
   })
+
+  it('advances BOTH accounts from the same candles', () => {
+    const now = 1_000_000
+    const m5 = [flat(1), flat(2), flat(3)]
+    // First tick seeds both watermarks (no backfill), leaving them non-null.
+    const seeded = applyTick(initBlob(simConfig), { m5, m15: [flat(1)], h1: [flat(1)] }, defaultConfig, now)
+    expect(seeded.lastProcessedTime).not.toBeNull()
+    expect(seeded.claudeLastProcessedTime).not.toBeNull()
+    // Both watermarks track the same latest candle after seeding.
+    expect(seeded.claudeLastProcessedTime).toBe(seeded.lastProcessedTime)
+  })
+})
+
+describe('initBlob', () => {
+  it('seeds Dad and Claude accounts identically (same economics)', () => {
+    const simConfig = { startingBalance: 200, riskPct: 0.01, contractSize: 100 }
+    const blob = initBlob(simConfig)
+    expect(blob.claudeState.startingBalance).toBe(blob.state.startingBalance)
+    expect(blob.claudeState.balance).toBe(blob.state.balance)
+    expect(blob.claudeState.trades).toHaveLength(0)
+    expect(blob.claudeLastProcessedTime).toBeNull()
+  })
 })
 
 describe('applyLimit', () => {

@@ -1,8 +1,9 @@
 import type { Candle, Direction } from '../types.js'
+import type { Grade } from '../edge/scoreSetup.js'
 import type { SimConfig, SimPosition, SimState, SimTrade } from './types.js'
 
 export type SetupSignal =
-  | { authorized: true; direction: Direction; entry: number; sl: number; tp: number }
+  | { authorized: true; direction: Direction; entry: number; sl: number; tp: number; grade?: Grade }
   | { authorized: false }
 
 export function initialSimState(config: SimConfig): SimState {
@@ -63,6 +64,7 @@ function maybeOpen(state: SimState, signal: SetupSignal, config: SimConfig, cand
     lot: riskCredits / (riskDist * config.contractSize),
     rr: rewardDist / riskDist,
     openedAtTime: candle.time,
+    grade: signal.grade,
   }
   return { ...state, open: pos, armed: false, nextId: state.nextId + 1 }
 }

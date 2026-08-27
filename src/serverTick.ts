@@ -1,7 +1,9 @@
 import type { Candle, Config, MarketContext } from './types.js'
 import type { SimConfig, SimState } from './sim/types.js'
 import { initialSimState } from './sim/engine.js'
-import { advanceSim } from './forwardTest.js'
+import { evaluateSetup } from './scoring/evaluateSetup.js'
+import { evaluateSetupClaude } from './scoring/evaluateSetupClaude.js'
+import { advanceSim, verdictToSignal, claudeVerdictToSignal } from './forwardTest.js'
 
 export const M15_MS = 15 * 60_000
 export const H1_MS = 60 * 60_000
@@ -9,6 +11,8 @@ export const H1_MS = 60 * 60_000
 export type SimBlob = {
   state: SimState
   lastProcessedTime: number | null
+  claudeState: SimState
+  claudeLastProcessedTime: number | null
   m15: Candle[]
   h1: Candle[]
   m15FetchedAt: number | null
@@ -21,6 +25,8 @@ export function initBlob(simConfig: SimConfig): SimBlob {
   return {
     state: initialSimState(simConfig),
     lastProcessedTime: null,
+    claudeState: initialSimState(simConfig),
+    claudeLastProcessedTime: null,
     m15: [],
     h1: [],
     m15FetchedAt: null,
@@ -53,10 +59,19 @@ export function applyTick(
   const m15 = fetched.m15 ?? blob.m15
   const h1 = fetched.h1 ?? blob.h1
   const ctx: MarketContext = { m5: fetched.m5, m15, h1 }
-  const advanced = advanceSim(blob.state, blob.lastProcessedTime, ctx, config)
+
+  const dadSignal = verdictToSignal(evaluateSetup(ctx, config))
+  const dad = advanceSim(blob.state, blob.lastProcessedTime, ctx, config, dadSignal)
+
+  const claudeSignal = claudeVerdictToSignal(evaluateSetupClaude(ctx, config, now, []))
+  const claude = advanceSim(blob.claudeState, blob.claudeLastProcessedTime, ctx, config, claudeSignal)
+
   return {
-    state: advanced.state,
-    lastProcessedTime: advanced.lastProcessedTime,
+    ...blob,
+    state: dad.state,
+    lastProcessedTime: dad.lastProcessedTime,
+    claudeState: claude.state,
+    claudeLastProcessedTime: claude.lastProcessedTime,
     m15,
     h1,
     m15FetchedAt: fetched.m15 ? now : blob.m15FetchedAt,

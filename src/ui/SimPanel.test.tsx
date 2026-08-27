@@ -50,3 +50,20 @@ test('hides the data-limit note once an update is newer', () => {
   render(<SimPanel state={empty} stats={simStats(empty)} meta={meta} />)
   expect(screen.queryByText(/Data limit reached/i)).not.toBeInTheDocument()
 })
+
+test('shows the grade chip on a graded trade', () => {
+  const graded = {
+    id: 't9', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 2, lot: 0.1, rr: 2,
+    openedAtTime: 0, exit: 110, exitReason: 'tp', result: 'win', rMultiple: 2, pnlCredits: 4, closedAtTime: 1,
+    grade: 'A',
+  } as const
+  const state = { startingBalance: 200, balance: 204, open: null, armed: true, nextId: 10, trades: [graded] }
+  render(<SimPanel state={state} stats={simStats(state)} meta={{ limitReachedAt: null, updatedAt: 1 }} />)
+  expect(screen.getByText('A')).toBeInTheDocument()
+})
+
+test('does not render a grade chip on an ungraded (Dad) trade', () => {
+  const state: SimState = { ...empty, balance: 204, trades: [winTrade] }
+  render(<SimPanel state={state} stats={simStats(state)} meta={NO_META} />)
+  expect(screen.queryByLabelText(/^grade /i)).not.toBeInTheDocument()
+})

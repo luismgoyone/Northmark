@@ -79,6 +79,14 @@ export function SimPanel({
           <span className={`font-semibold ${state.open.direction === 'long' ? 'text-pass-fg' : 'text-fail-fg'}`}>
             {state.open.direction === 'long' ? '▲ LONG' : '▼ SHORT'}
           </span>
+          {state.open.grade && (
+            <span
+              className="rounded-chip border border-brand/50 bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand"
+              aria-label={`grade ${state.open.grade}`}
+            >
+              {state.open.grade}
+            </span>
+          )}
           <span className="font-mono text-ink-2">
             entry {fmt(state.open.entry)} · SL {fmt(state.open.sl)} · TP {fmt(state.open.tp)} · lot{' '}
             {fmtLot(state.open.lot)} · risk {usd(state.open.riskCredits)}
@@ -112,6 +120,14 @@ export function SimPanel({
                   <span className={`text-[12.5px] font-semibold ${t.direction === 'long' ? 'text-pass-fg' : 'text-fail-fg'}`}>
                     {t.direction === 'long' ? 'LONG' : 'SHORT'}
                   </span>
+                  {t.grade && (
+                    <span
+                      className="rounded-chip border border-brand/50 bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand"
+                      aria-label={`grade ${t.grade}`}
+                    >
+                      {t.grade}
+                    </span>
+                  )}
                   <span className="font-mono text-[12px] text-ink-2">
                     entry {fmt(t.entry)} · SL {fmt(t.sl)} · TP {fmt(t.tp)} → {t.exitReason.toUpperCase()} @ {fmt(t.exit)}
                   </span>

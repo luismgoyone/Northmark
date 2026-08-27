@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { advanceSim, verdictToSignal } from './forwardTest'
+import { advanceSim, claudeVerdictToSignal, verdictToSignal } from './forwardTest'
+import { evaluateSetup } from './scoring/evaluateSetup'
 import { initialSimState } from './sim/engine'
+import { simConfigFrom } from './sim/config'
 import { defaultConfig } from './config'
 import type { SimConfig } from './sim/types'
 import type { SetupVerdict } from './scoring/evaluateSetup'
+import type { EdgeVerdict } from './scoring/evaluateSetupClaude'
 import type { Candle, MarketContext } from './types'
 import { trendSeries } from '../tests/fixtures/structureSeries'
 
@@ -49,6 +52,32 @@ describe('verdictToSignal', () => {
   })
 })
 
+const gradedTradeable: EdgeVerdict = {
+  status: 'graded', direction: 'long',
+  session: { window: 'London–NY overlap', quality: 'prime' }, news: null,
+  score: { total: 92, grade: 'A', sections: [], structureFloorApplied: false },
+  setup: { entry: 100, sl: 95, tp1: 105, tp2: 110, lot: 0.1 }, tradeable: true,
+}
+
+describe('claudeVerdictToSignal', () => {
+  it('authorizes an A/B graded, tradeable setup and carries entry/sl/tp2 + grade', () => {
+    const sig = claudeVerdictToSignal(gradedTradeable)
+    expect(sig).toEqual({ authorized: true, direction: 'long', entry: 100, sl: 95, tp: 110, grade: 'A' })
+  })
+  it('does not authorize a blocked verdict even with a high grade', () => {
+    const blocked: EdgeVerdict = { ...gradedTradeable, status: 'blocked', blockedBy: 'news', tradeable: false }
+    expect(claudeVerdictToSignal(blocked)).toEqual({ authorized: false })
+  })
+  it('does not authorize a graded-but-not-tradeable (C/D) setup', () => {
+    const marginal: EdgeVerdict = { ...gradedTradeable, tradeable: false, score: { total: 70, grade: 'C', sections: [], structureFloorApplied: false } }
+    expect(claudeVerdictToSignal(marginal)).toEqual({ authorized: false })
+  })
+  it('does not authorize a wait verdict', () => {
+    const wait: EdgeVerdict = { status: 'wait', direction: null, blockedBy: 'consolidation', session: { window: 'x', quality: 'low' }, news: null, score: null, setup: null, tradeable: false }
+    expect(claudeVerdictToSignal(wait)).toEqual({ authorized: false })
+  })
+})
+
 // advanceSim: build a MarketContext whose evaluateSetup verdict we control by choosing candles is
 // hard, so exercise the WATERMARK + stepping behavior directly with a wait-producing context
 // (a single flat candle can't authorize) and assert dedup + no-op semantics.
@@ -58,20 +87,24 @@ describe('advanceSim', () => {
     const m5 = times.map((t) => bar(t, 100, 100, 100, 100))
     return { m5, m15: [flat], h1: [flat] }
   }
+  // Preserve the pre-refactor behavior: the Dad signal is the verdict computed from the same ctx.
+  const dadSignalFor = (ctx: MarketContext) => verdictToSignal(evaluateSetup(ctx, defaultConfig))
 
   it('steps only candles newer than the watermark and advances it to the latest time', () => {
     const s0 = initialSimState(simConfig)
-    const r1 = advanceSim(s0, null, ctxAt([1, 2, 3]), defaultConfig)
+    const ctx = ctxAt([1, 2, 3])
+    const r1 = advanceSim(s0, null, ctx, defaultConfig, dadSignalFor(ctx))
     expect(r1.lastProcessedTime).toBe(3)
     // Re-running with the same candles is a no-op (nothing newer than the watermark).
-    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctxAt([1, 2, 3]), defaultConfig)
+    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig, dadSignalFor(ctx))
     expect(r2.lastProcessedTime).toBe(3)
     expect(r2.state).toEqual(r1.state)
   })
 
   it('returns the same watermark and unchanged state when there are no candles', () => {
     const s0 = initialSimState(simConfig)
-    const r = advanceSim(s0, 5, { m5: [], m15: [flat], h1: [flat] }, defaultConfig)
+    const ctx: MarketContext = { m5: [], m15: [flat], h1: [flat] }
+    const r = advanceSim(s0, 5, ctx, defaultConfig, dadSignalFor(ctx))
     expect(r.lastProcessedTime).toBe(5)
     expect(r.state).toBe(s0)
   })
@@ -83,7 +116,7 @@ describe('advanceSim', () => {
     const ctx: MarketContext = { m5, m15, h1 }
 
     const s0 = initialSimState(simConfig)
-    const r1 = advanceSim(s0, null, ctx, defaultConfig)
+    const r1 = advanceSim(s0, null, ctx, defaultConfig, dadSignalFor(ctx))
     // First run must not open (or settle) a trade against the historical candles it just fetched.
     expect(r1.state.trades).toEqual([])
     expect(r1.state.open).toBeNull()
@@ -91,8 +124,20 @@ describe('advanceSim', () => {
     expect(r1.lastProcessedTime).toBe(m5[m5.length - 1]!.time)
 
     // A second call against the SAME context (nothing newer than the seeded watermark) is a no-op.
-    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig)
+    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig, dadSignalFor(ctx))
     expect(r2.lastProcessedTime).toBe(r1.lastProcessedTime)
     expect(r2.state).toEqual(r1.state)
+  })
+
+  it('opens from the passed signal, not an internally-computed one', () => {
+    const config = defaultConfig
+    const start = initialSimState(simConfigFrom(config))
+    const ctx = ctxAt([1, 2, 3])
+    // Seed the watermark first (first run never backfills).
+    const seeded = advanceSim(start, null, ctx, config, { authorized: false })
+    const openSig = { authorized: true, direction: 'long', entry: 100, sl: 95, tp: 110, grade: 'B' } as const
+    const nextCtx = { ...ctx, m5: [...ctx.m5, { time: (seeded.lastProcessedTime ?? 0) + 300_000, open: 100, high: 101, low: 99, close: 100 }] }
+    const out = advanceSim(seeded.state, seeded.lastProcessedTime, nextCtx, config, openSig)
+    expect(out.state.open?.grade).toBe('B')
   })
 })

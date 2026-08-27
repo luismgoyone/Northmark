@@ -1,4 +1,5 @@
 import type { Direction } from '../types.js'
+import type { Grade } from '../edge/scoreSetup.js'
 
 export type SimConfig = { startingBalance: number; riskPct: number; contractSize: number }
 
@@ -12,6 +13,7 @@ export type SimPosition = {
   lot: number           // position size in lots = riskUSD / (stopDistance * contractSize)
   rr: number            // reward:risk to tp (≈2) — drives win P&L
   openedAtTime: number  // candle time (epoch ms) at open
+  grade?: Grade         // pre-trade quality grade (Claude engine); omitted by the Dad engine
 }
 
 export type SimTrade = SimPosition & {

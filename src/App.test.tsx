@@ -90,9 +90,10 @@ test('interactive controls are read-only across tabs — no buy/order/execute an
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'M15' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'H1' })).toBeInTheDocument()
-  // Paper tab: the shared server record (no Reset — reset is admin-only).
+  // Paper tab: the shared server record (no Reset — reset is admin-only). Two accounts
+  // (Dad + Claude) each render their own panel.
   fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
-  expect(screen.getByText(/USD, not real money/i)).toBeInTheDocument()
+  expect(screen.getAllByText(/USD, not real money/i)).toHaveLength(2)
   expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
   // Nothing that places an order, on any tab we've visited.
   expect(
@@ -171,4 +172,16 @@ test('shows both engines on the Signal tab', () => {
   render(<App />)
   expect(screen.getByRole('heading', { name: /dad \+ chatgpt/i })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: /claude/i })).toBeInTheDocument()
+})
+
+test('shows both engine accounts on the Paper tab', () => {
+  // Default render is Live mode; the Paper tab renders the two sectioned SimPanels there.
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: /paper/i }))
+  // Two StrategySection headings (Dad + ChatGPT, Claude) now bracket the two SimPanels.
+  expect(screen.getByRole('heading', { name: /dad \+ chatgpt/i })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: /claude/i })).toBeInTheDocument()
+  // Both accounts render their own paper panel.
+  expect(screen.getAllByText(/USD, not real money/i)).toHaveLength(2)
 })
