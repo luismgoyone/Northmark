@@ -3,6 +3,7 @@ import { applyLimit, applyTick, initBlob, isCreditLimitError, isDue, planFetch, 
 import { defaultConfig } from './config'
 import type { SimConfig } from './sim/types'
 import type { Candle } from './types'
+import type { NewsEvent } from './edge/newsWindow'
 
 const simConfig: SimConfig = { startingBalance: 10_000, riskPct: 0.01, contractSize: 100 }
 const flat = (t: number): Candle => ({ time: t, open: 100, high: 100, low: 100, close: 100 })
@@ -18,11 +19,11 @@ describe('isDue', () => {
 describe('planFetch', () => {
   it('fetches higher timeframes only when their interval has elapsed', () => {
     const blob = initBlob(simConfig)
-    expect(planFetch(blob, 1000)).toEqual({ m15: true, h1: true }) // never fetched → due
-    const warm = { ...blob, m15FetchedAt: 1000, h1FetchedAt: 1000 }
-    expect(planFetch(warm, 1000 + M15_MS - 1)).toEqual({ m15: false, h1: false })
-    expect(planFetch(warm, 1000 + M15_MS)).toEqual({ m15: true, h1: false })
-    expect(planFetch(warm, 1000 + H1_MS)).toEqual({ m15: true, h1: true })
+    expect(planFetch(blob, 1000)).toEqual({ m15: true, h1: true, news: true }) // never fetched → due
+    const warm = { ...blob, m15FetchedAt: 1000, h1FetchedAt: 1000, newsFetchedAt: 1000 }
+    expect(planFetch(warm, 1000 + M15_MS - 1)).toEqual({ m15: false, h1: false, news: false })
+    expect(planFetch(warm, 1000 + M15_MS)).toEqual({ m15: true, h1: false, news: false })
+    expect(planFetch(warm, 1000 + H1_MS)).toEqual({ m15: true, h1: true, news: true })
   })
 })
 
@@ -49,6 +50,28 @@ describe('applyTick', () => {
     expect(seeded.claudeLastProcessedTime).not.toBeNull()
     // Both watermarks track the same latest candle after seeding.
     expect(seeded.claudeLastProcessedTime).toBe(seeded.lastProcessedTime)
+  })
+})
+
+describe('news cache', () => {
+  it('initBlob seeds an empty news cache', () => {
+    const blob = initBlob({ startingBalance: 200, riskPct: 0.01, contractSize: 100 })
+    expect(blob.news).toEqual([])
+    expect(blob.newsFetchedAt).toBeNull()
+  })
+
+  it('planFetch marks news due when never fetched', () => {
+    const blob = initBlob({ startingBalance: 200, riskPct: 0.01, contractSize: 100 })
+    expect(planFetch(blob, 1_000_000).news).toBe(true)
+  })
+
+  it('applyTick caches passed news and refreshes its timestamp', () => {
+    const cfg = { startingBalance: 200, riskPct: 0.01, contractSize: 100 }
+    const now = 5_000_000
+    const events: NewsEvent[] = [{ time: now, impact: 'high', currency: 'USD', title: 'FOMC' }]
+    const out = applyTick(initBlob(cfg), { m5: [flat(1)], m15: [flat(1)], h1: [flat(1)], news: events }, defaultConfig, now)
+    expect(out.news).toEqual(events)
+    expect(out.newsFetchedAt).toBe(now)
   })
 })
 
