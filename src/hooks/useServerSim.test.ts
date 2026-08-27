@@ -14,7 +14,7 @@ const claudeServerState = {
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async () => ({
     ok: true,
-    json: async () => ({ state: serverState, claudeState: claudeServerState, meta: { limitReachedAt: null, updatedAt: 123 } }),
+    json: async () => ({ state: serverState, claudeState: claudeServerState, news: [], meta: { limitReachedAt: null, updatedAt: 123, newsUpdatedAt: null, newsActive: false } }),
   })))
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -32,6 +32,13 @@ describe('useServerSim', () => {
     const { result } = renderHook(() => useServerSim())
     await waitFor(() => expect(result.current.claudeState.balance).toBe(9_900))
     expect(result.current.claudeStats.trades).toBe(0)
+  })
+
+  it('exposes news events and feed-active status', async () => {
+    const { result } = renderHook(() => useServerSim())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(Array.isArray(result.current.news)).toBe(true)
+    expect(result.current.meta).toHaveProperty('newsActive')
   })
 
   it('keeps the last-good state when a fetch fails', async () => {
