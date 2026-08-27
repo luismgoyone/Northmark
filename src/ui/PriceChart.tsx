@@ -7,6 +7,8 @@ import { emaSeries } from '../indicators/ema'
 import { stochasticSeries } from '../indicators/stochastic'
 import { swingPoints } from '../indicators/swingPoints'
 import { toCandlePoints, toLinePoints, toStochLines, toSwingMarkers } from './chartData'
+import type { SimState } from '../sim/types'
+import { buildTradeMarkers, buildPositionLines, type TradeMarker } from './chartOverlays'
 
 /**
  * `chartData.ts` (Task 4) emits plain `number` unix-second times (`ChartTime`).
@@ -55,9 +57,12 @@ type Props = {
   ctx: MarketContext
   emaPeriod: number
   stoch: { k: number; d: number; smooth: number }
+  dadState?: SimState
+  claudeState?: SimState
+  live?: boolean
 }
 
-export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
+export function PriceChart({ ctx, emaPeriod, stoch, dadState, claudeState, live = false }: Props): ReactElement {
   const [tf, setTf] = useState<Timeframe>('M5')
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -100,6 +105,21 @@ export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
     })
     candleSeries.setData(toCandlePoints(candles).map((p) => ({ ...p, time: asUtc(p.time) })))
 
+    // Open-position entry/SL/TP lines (Live only, any timeframe). Colors are theme-driven.
+    if (live && dadState && claudeState) {
+      for (const ln of buildPositionLines(dadState, claudeState)) {
+        const lineColor = ln.kind === 'sl' ? down : ln.kind === 'tp' ? up : ln.engine === 'claude' ? cssVar('--brand', '#c48a1a') : ink2
+        candleSeries.createPriceLine({
+          price: ln.price,
+          color: lineColor,
+          lineWidth: 1,
+          lineStyle: ln.kind === 'entry' ? 0 : 2, // 0 = solid, 2 = dashed
+          axisLabelVisible: true,
+          title: `${ln.engine === 'claude' ? 'Claude' : 'Dad'} ${ln.kind.toUpperCase()}`,
+        })
+      }
+    }
+
     const emaLine = chart.addSeries(LineSeries, { color: cssVar('--brand', '#c48a1a'), lineWidth: 2, priceLineVisible: false })
     emaLine.setData(toLinePoints(candles, emaSeries(candles, emaPeriod)).map((p) => ({ ...p, time: asUtc(p.time) })))
 
@@ -110,6 +130,23 @@ export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
     dLine.setData(stochData.d.map((p) => ({ ...p, time: asUtc(p.time) })))
 
     const swings = swingPoints(candles)
+
+    // Trade entry markers (Live + M5 only), colored by win/loss and labeled by engine + grade.
+    // Only trades whose open time lands on a loaded candle are shown. Same field shape as swings.
+    const candleSecs = new Set(candles.map((c) => Math.floor(c.time / 1000)))
+    const tradeMarkerData = (
+      up_: string,
+      down_: string,
+    ): Array<{ time: UTCTimestamp; position: 'belowBar' | 'aboveBar'; shape: 'arrowUp' | 'arrowDown'; color: string; text: string }> => {
+      if (!(live && tf === 'M5' && dadState && claudeState)) return []
+      return buildTradeMarkers(dadState, claudeState, candleSecs).map((m: TradeMarker) => ({
+        time: asUtc(m.time),
+        position: m.direction === 'long' ? 'belowBar' : 'aboveBar',
+        shape: m.direction === 'long' ? 'arrowUp' : 'arrowDown',
+        color: m.result === 'win' ? up_ : down_,
+        text: m.engine === 'claude' ? `C:${m.grade ?? '?'}` : 'D',
+      }))
+    }
 
     /**
      * Applies the current (fresh, re-read) theme colors to the chart chrome, every
@@ -138,19 +175,19 @@ export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
       emaLine.applyOptions({ color: themedBrand })
       kLine.applyOptions({ color: themedInk2 })
       dLine.applyOptions({ color: themedBrand })
-      createSeriesMarkers(
-        candleSeries,
-        toSwingMarkers(candles, swings, { high: themedDown, low: themedUp }).map((m) => ({
+      createSeriesMarkers(candleSeries, [
+        ...toSwingMarkers(candles, swings, { high: themedDown, low: themedUp }).map((m) => ({
           ...m,
           time: asUtc(m.time),
-        }))
-      )
+        })),
+        ...tradeMarkerData(themedUp, themedDown),
+      ])
     }
 
-    createSeriesMarkers(
-      candleSeries,
-      toSwingMarkers(candles, swings, { high: down, low: up }).map((m) => ({ ...m, time: asUtc(m.time) }))
-    )
+    createSeriesMarkers(candleSeries, [
+      ...toSwingMarkers(candles, swings, { high: down, low: up }).map((m) => ({ ...m, time: asUtc(m.time) })),
+      ...tradeMarkerData(up, down),
+    ])
 
     chart.timeScale().fitContent()
 
@@ -163,7 +200,7 @@ export function PriceChart({ ctx, emaPeriod, stoch }: Props): ReactElement {
       observer?.disconnect()
       chart.remove()
     }
-  }, [candles, emaPeriod, stoch.k, stoch.d, stoch.smooth])
+  }, [candles, emaPeriod, stoch.k, stoch.d, stoch.smooth, dadState, claudeState, live, tf])
 
   return (
     <section className="mb-4 rounded-panel border border-border bg-surface p-4 shadow-panel">

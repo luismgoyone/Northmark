@@ -6,19 +6,25 @@ import type { Candle } from '../types'
 // hoists these declarations alongside it so the factory can reference them
 // (plain `const` here would hit a TDZ ReferenceError since these names don't
 // match vitest's auto-hoist `mock*` prefix convention).
-const { removeMock, setDataMock, addSeriesMock, createChartMock, createSeriesMarkersMock } = vi.hoisted(() => {
-  const removeMock = vi.fn()
-  const setDataMock = vi.fn()
-  const addSeriesMock = vi.fn(() => ({ setData: setDataMock, applyOptions: vi.fn() }))
-  const createChartMock = vi.fn(() => ({
-    addSeries: addSeriesMock,
-    applyOptions: vi.fn(),
-    timeScale: () => ({ fitContent: vi.fn() }),
-    remove: removeMock,
-  }))
-  const createSeriesMarkersMock = vi.fn()
-  return { removeMock, setDataMock, addSeriesMock, createChartMock, createSeriesMarkersMock }
-})
+const { removeMock, setDataMock, addSeriesMock, createChartMock, createSeriesMarkersMock, createPriceLineMock } =
+  vi.hoisted(() => {
+    const removeMock = vi.fn()
+    const setDataMock = vi.fn()
+    const createPriceLineMock = vi.fn()
+    const addSeriesMock = vi.fn(() => ({
+      setData: setDataMock,
+      applyOptions: vi.fn(),
+      createPriceLine: createPriceLineMock,
+    }))
+    const createChartMock = vi.fn(() => ({
+      addSeries: addSeriesMock,
+      applyOptions: vi.fn(),
+      timeScale: () => ({ fitContent: vi.fn() }),
+      remove: removeMock,
+    }))
+    const createSeriesMarkersMock = vi.fn()
+    return { removeMock, setDataMock, addSeriesMock, createChartMock, createSeriesMarkersMock, createPriceLineMock }
+  })
 
 vi.mock('lightweight-charts', () => ({
   createChart: createChartMock,
@@ -28,6 +34,12 @@ vi.mock('lightweight-charts', () => ({
 }))
 
 import { PriceChart } from './PriceChart'
+import type { SimState } from '../sim/types'
+
+const openState: SimState = {
+  startingBalance: 200, balance: 200, armed: false, nextId: 2, trades: [],
+  open: { id: 'p1', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 2, lot: 0.1, rr: 2, openedAtTime: 60_000 },
+}
 
 const series = (n: number): Candle[] =>
   Array.from({ length: n }, (_, i) => ({ time: (i + 1) * 60_000, open: 100, high: 101, low: 99, close: 100 }))
@@ -41,6 +53,7 @@ beforeEach(() => {
   setDataMock.mockClear()
   removeMock.mockClear()
   createSeriesMarkersMock.mockClear()
+  createPriceLineMock.mockClear()
   document.documentElement.removeAttribute('data-theme')
 })
 
@@ -109,5 +122,16 @@ describe('PriceChart', () => {
     expect(dLine.applyOptions).toHaveBeenCalledWith(expect.objectContaining({ color: expect.any(String) }))
     // Swing markers are re-created with fresh theme colors on re-theme (initial + retheme).
     expect(createSeriesMarkersMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('draws position price lines when live with an open position', () => {
+    render(<PriceChart {...props} live dadState={openState} claudeState={{ ...openState, open: null }} />)
+    // entry + sl + tp = 3 lines for the one open (dad) position
+    expect(createPriceLineMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('draws no overlays when not live', () => {
+    render(<PriceChart {...props} live={false} dadState={openState} claudeState={openState} />)
+    expect(createPriceLineMock).not.toHaveBeenCalled()
   })
 })
