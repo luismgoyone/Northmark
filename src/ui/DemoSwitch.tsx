@@ -10,8 +10,10 @@ export function DemoSwitch({ value, onChange }: { value: Mode; onChange: (m: Mod
         aria-label="Data source"
         value={value}
         onChange={(e) => onChange(e.target.value as Mode)}
-        className={`rounded-chip border px-2 py-1 text-[11px] ${
-          isDemo ? 'border-build-bd bg-build-bg text-build-fg' : 'border-border bg-surface text-ink-2'
+        className={`rounded-chip border pl-2.5 pr-1.5 py-1 text-[11px] transition-colors focus-visible:outline-none ${
+          isDemo
+            ? 'border-build-bd bg-build-bg text-build-fg focus-visible:border-build-fg'
+            : 'border-border bg-surface text-ink-2 focus-visible:border-ink-2 focus-visible:text-ink'
         }`}
       >
         <option value="live">Live</option>
