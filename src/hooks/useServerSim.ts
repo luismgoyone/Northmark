@@ -4,18 +4,25 @@ import { simConfigFrom } from '../sim/config'
 import { initialSimState } from '../sim/engine'
 import { simStats, type SimStats } from '../sim/stats'
 import type { SimState } from '../sim/types'
+import type { NewsEvent } from '../edge/newsWindow'
 
-export type SimMeta = { limitReachedAt: number | null; updatedAt: number | null }
+export type SimMeta = {
+  limitReachedAt: number | null
+  updatedAt: number | null
+  newsUpdatedAt: number | null
+  newsActive: boolean
+}
 export type UseServerSim = {
   state: SimState
   stats: SimStats
   claudeState: SimState
   claudeStats: SimStats
+  news: NewsEvent[]
   meta: SimMeta
   loading: boolean
 }
 
-const EMPTY_META: SimMeta = { limitReachedAt: null, updatedAt: null }
+const EMPTY_META: SimMeta = { limitReachedAt: null, updatedAt: null, newsUpdatedAt: null, newsActive: false }
 
 /**
  * Read-only view of the shared server forward-test. Fetches `/api/sim-state` on mount and polls
@@ -27,6 +34,7 @@ export function useServerSim(): UseServerSim {
   const initial = (): SimState => initialSimState(simConfigFrom(defaultConfig))
   const [state, setState] = useState<SimState>(initial)
   const [claudeState, setClaudeState] = useState<SimState>(initial)
+  const [news, setNews] = useState<NewsEvent[]>([])
   const [meta, setMeta] = useState<SimMeta>(EMPTY_META)
   const [loading, setLoading] = useState(true)
 
@@ -36,10 +44,11 @@ export function useServerSim(): UseServerSim {
       try {
         const res = await fetch('/api/sim-state')
         if (!res.ok) return
-        const json = (await res.json()) as { state?: SimState; claudeState?: SimState; meta?: SimMeta }
+        const json = (await res.json()) as { state?: SimState; claudeState?: SimState; news?: NewsEvent[]; meta?: SimMeta }
         if (alive && json.state) {
           setState(json.state)
           if (json.claudeState) setClaudeState(json.claudeState)
+          if (json.news) setNews(json.news)
           setMeta(json.meta ?? EMPTY_META)
         }
       } catch {
@@ -56,5 +65,5 @@ export function useServerSim(): UseServerSim {
     }
   }, [])
 
-  return { state, stats: simStats(state), claudeState, claudeStats: simStats(claudeState), meta, loading }
+  return { state, stats: simStats(state), claudeState, claudeStats: simStats(claudeState), news, meta, loading }
 }

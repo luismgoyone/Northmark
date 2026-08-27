@@ -174,6 +174,12 @@ test('shows both engines on the Signal tab', () => {
   expect(screen.getByRole('heading', { name: /claude/i })).toBeInTheDocument()
 })
 
+test('shows the news-feed status on the Signal tab', () => {
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+  expect(screen.getByText(/news feed/i)).toBeInTheDocument()
+})
+
 test('shows both engine accounts on the Paper tab', () => {
   // Default render is Live mode; the Paper tab renders the two sectioned SimPanels there.
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
