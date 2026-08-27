@@ -7,10 +7,14 @@ const serverState = {
   trades: [{ id: 't1', direction: 'long', entry: 100, sl: 95, tp: 110, riskCredits: 100, rr: 2, openedAtTime: 0, exit: 110, exitReason: 'tp', result: 'win', rMultiple: 2, pnlCredits: 200, closedAtTime: 1 }],
 }
 
+const claudeServerState = {
+  startingBalance: 10_000, balance: 9_900, open: null, armed: true, nextId: 1, trades: [],
+}
+
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async () => ({
     ok: true,
-    json: async () => ({ state: serverState, meta: { limitReachedAt: null, updatedAt: 123 } }),
+    json: async () => ({ state: serverState, claudeState: claudeServerState, meta: { limitReachedAt: null, updatedAt: 123 } }),
   })))
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -22,6 +26,12 @@ describe('useServerSim', () => {
     expect(result.current.stats.trades).toBe(1)
     expect(result.current.meta.updatedAt).toBe(123)
     expect(result.current.loading).toBe(false)
+  })
+
+  it('derives Claude stats from claudeState', async () => {
+    const { result } = renderHook(() => useServerSim())
+    await waitFor(() => expect(result.current.claudeState.balance).toBe(9_900))
+    expect(result.current.claudeStats.trades).toBe(0)
   })
 
   it('keeps the last-good state when a fetch fails', async () => {

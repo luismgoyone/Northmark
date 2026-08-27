@@ -6,17 +6,27 @@ import { simStats, type SimStats } from '../sim/stats'
 import type { SimState } from '../sim/types'
 
 export type SimMeta = { limitReachedAt: number | null; updatedAt: number | null }
-export type UseServerSim = { state: SimState; stats: SimStats; meta: SimMeta; loading: boolean }
+export type UseServerSim = {
+  state: SimState
+  stats: SimStats
+  claudeState: SimState
+  claudeStats: SimStats
+  meta: SimMeta
+  loading: boolean
+}
 
 const EMPTY_META: SimMeta = { limitReachedAt: null, updatedAt: null }
 
 /**
  * Read-only view of the shared server forward-test. Fetches `/api/sim-state` on mount and polls
  * every 60s. On any failure it keeps the last-good state and never throws. The server owns
- * ticking now; this hook does not step or persist anything.
+ * ticking now; this hook does not step or persist anything. Exposes both the Dad account
+ * (`state`/`stats`) and the Claude account (`claudeState`/`claudeStats`).
  */
 export function useServerSim(): UseServerSim {
-  const [state, setState] = useState<SimState>(() => initialSimState(simConfigFrom(defaultConfig)))
+  const initial = (): SimState => initialSimState(simConfigFrom(defaultConfig))
+  const [state, setState] = useState<SimState>(initial)
+  const [claudeState, setClaudeState] = useState<SimState>(initial)
   const [meta, setMeta] = useState<SimMeta>(EMPTY_META)
   const [loading, setLoading] = useState(true)
 
@@ -26,9 +36,10 @@ export function useServerSim(): UseServerSim {
       try {
         const res = await fetch('/api/sim-state')
         if (!res.ok) return
-        const json = (await res.json()) as { state?: SimState; meta?: SimMeta }
+        const json = (await res.json()) as { state?: SimState; claudeState?: SimState; meta?: SimMeta }
         if (alive && json.state) {
           setState(json.state)
+          if (json.claudeState) setClaudeState(json.claudeState)
           setMeta(json.meta ?? EMPTY_META)
         }
       } catch {
@@ -45,5 +56,5 @@ export function useServerSim(): UseServerSim {
     }
   }, [])
 
-  return { state, stats: simStats(state), meta, loading }
+  return { state, stats: simStats(state), claudeState, claudeStats: simStats(claudeState), meta, loading }
 }
