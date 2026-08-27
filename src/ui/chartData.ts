@@ -13,7 +13,7 @@ export type SwingMarker = {
   text: string
 }
 
-const toSec = (ms: number): ChartTime => Math.floor(ms / 1000)
+export const toSec = (ms: number): ChartTime => Math.floor(ms / 1000)
 
 /** `Candle[]` → candlestick series data (ms→s, OHLC preserved). */
 export function toCandlePoints(candles: Candle[]): CandlePoint[] {

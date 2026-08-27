@@ -281,7 +281,23 @@ export default function App(): ReactElement {
           )}
 
           {tab === 'chart' && (
-            <PriceChart ctx={ctxForRender} emaPeriod={activeConfig.ema.period} stoch={activeConfig.stoch} />
+            <div>
+              <PriceChart
+                ctx={ctxForRender}
+                emaPeriod={activeConfig.ema.period}
+                stoch={activeConfig.stoch}
+                dadState={sim.state}
+                claudeState={sim.claudeState}
+                live={mode === 'live'}
+              />
+              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px] text-ink-3">
+                <span className="font-semibold uppercase tracking-[0.06em]">Trade markers</span>
+                <span><b className="text-ink-2">D</b> = Dad · <b className="text-ink-2">C:grade</b> = Claude</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-pass-fg" /> win</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-fail-fg" /> loss</span>
+                {mode !== 'live' && <span className="text-ink-3">(markers show in Live mode)</span>}
+              </div>
+            </div>
           )}
 
           {tab === 'paper' &&

@@ -108,6 +108,14 @@ it('renders the price chart with a timeframe toggle in the Chart tab', () => {
   expect(screen.getByRole('button', { name: 'M5' })).toBeInTheDocument()
 })
 
+it('shows the engine marker legend on the Chart tab', () => {
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: /chart/i }))
+  expect(screen.getByText(/win/i)).toBeInTheDocument()
+  expect(screen.getByText(/loss/i)).toBeInTheDocument()
+})
+
 test('default render is Live: no demo banner, data source select shows Live', () => {
   mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
   render(<App />)
