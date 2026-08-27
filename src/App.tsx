@@ -281,7 +281,14 @@ export default function App(): ReactElement {
 
           {tab === 'paper' &&
             (mode === 'live' ? (
-              <SimPanel state={sim.state} stats={sim.stats} meta={sim.meta} />
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                <StrategySection engine="dad" subtitle="verbatim 13-step">
+                  <SimPanel state={sim.state} stats={sim.stats} meta={sim.meta} />
+                </StrategySection>
+                <StrategySection engine="claude" subtitle="my criteria">
+                  <SimPanel state={sim.claudeState} stats={sim.claudeStats} meta={sim.meta} />
+                </StrategySection>
+              </div>
             ) : (
               <div className="rounded-panel border border-border bg-surface px-[18px] py-8 text-center text-[12.5px] text-ink-2 shadow-panel">
                 Paper trading records the shared <b className="text-ink">Live</b> forward-test. Switch to Live
