@@ -60,7 +60,7 @@ export const CLAUDE_CHECKLIST: ChecklistSection[] = [
     items: [
       weight('Stochastic not exhausted (supporting, not proven)', 'folklore'),
       weight('ATR in a healthy band (not dead, not spiked)', 'proven'),
-      weight('Confluence count (level + EMA + round number), capped at 3', 'directional'),
+      weight('Confluence count (EMA + round number + retest), capped at 3', 'directional'),
     ],
   },
   {

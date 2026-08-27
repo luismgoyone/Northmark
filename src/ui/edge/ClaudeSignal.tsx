@@ -24,7 +24,7 @@ function reason(v: EdgeVerdict): string {
   if (v.status === 'blocked')
     return v.blockedBy === 'news'
       ? 'Blocked: red-folder news within 30 min'
-      : 'Blocked: low-liquidity session'
+      : 'Blocked: low-liquidity session / late-Friday risk'
   return v.tradeable
     ? 'All criteria met — A/B setup'
     : 'Below the A/B threshold — the data says pass'
@@ -91,8 +91,8 @@ export function ClaudeSignal({ verdict }: { verdict: EdgeVerdict }): ReactElemen
       {verdict.setup && (
         <div className="rounded-panel border border-border bg-surface-sunken px-3 py-2 text-[12px] text-ink-2">
           R:R <span className="font-mono text-ink">{rr.toFixed(2)}</span> · breakeven win-rate{' '}
-          <span className="font-mono text-ink">{Math.round(breakevenWinRate(rr) * 100)}%</span> · at
-          45% WR you are{' '}
+          <span className="font-mono text-ink">{Math.round(breakevenWinRate(rr) * 100)}%</span> ·{' '}
+          <span className="text-ink-3">illustrative:</span> at 45% WR you are{' '}
           <span className="font-mono text-ink">{expectancyR(0.45, rr).toFixed(3)}R</span>/trade
         </div>
       )}
