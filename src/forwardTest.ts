@@ -1,6 +1,7 @@
 import type { Config, MarketContext } from './types.js'
 import type { SetupVerdict } from './scoring/evaluateSetup.js'
 import { evaluateSetup } from './scoring/evaluateSetup.js'
+import type { EdgeVerdict } from './scoring/evaluateSetupClaude.js'
 import { simStep, type SetupSignal } from './sim/engine.js'
 import type { SimState } from './sim/types.js'
 
@@ -8,6 +9,25 @@ import type { SimState } from './sim/types.js'
 export function verdictToSignal(verdict: SetupVerdict): SetupSignal {
   if (verdict.status === 'setup') {
     return { authorized: true, direction: verdict.direction, entry: verdict.entry, sl: verdict.sl, tp: verdict.tp2 }
+  }
+  return { authorized: false }
+}
+
+/**
+ * Map a Claude EdgeVerdict to the sim's narrow signal. Authorizes ONLY a graded, tradeable
+ * setup (grade A/B, no veto); tp2 is the paper target, matching verdictToSignal. Carries the
+ * grade so the paper trade is tagged with its pre-trade quality.
+ */
+export function claudeVerdictToSignal(verdict: EdgeVerdict): SetupSignal {
+  if (verdict.status === 'graded' && verdict.tradeable && verdict.setup && verdict.direction && verdict.score) {
+    return {
+      authorized: true,
+      direction: verdict.direction,
+      entry: verdict.setup.entry,
+      sl: verdict.setup.sl,
+      tp: verdict.setup.tp2,
+      grade: verdict.score.grade,
+    }
   }
   return { authorized: false }
 }

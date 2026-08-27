@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { advanceSim, verdictToSignal } from './forwardTest'
+import { advanceSim, claudeVerdictToSignal, verdictToSignal } from './forwardTest'
 import { initialSimState } from './sim/engine'
 import { defaultConfig } from './config'
 import type { SimConfig } from './sim/types'
 import type { SetupVerdict } from './scoring/evaluateSetup'
+import type { EdgeVerdict } from './scoring/evaluateSetupClaude'
 import type { Candle, MarketContext } from './types'
 import { trendSeries } from '../tests/fixtures/structureSeries'
 
@@ -46,6 +47,32 @@ describe('verdictToSignal', () => {
   })
   it('maps a wait verdict to unauthorized', () => {
     expect(verdictToSignal(wait())).toEqual({ authorized: false })
+  })
+})
+
+const gradedTradeable: EdgeVerdict = {
+  status: 'graded', direction: 'long',
+  session: { window: 'London–NY overlap', quality: 'prime' }, news: null,
+  score: { total: 92, grade: 'A', sections: [], structureFloorApplied: false },
+  setup: { entry: 100, sl: 95, tp1: 105, tp2: 110, lot: 0.1 }, tradeable: true,
+}
+
+describe('claudeVerdictToSignal', () => {
+  it('authorizes an A/B graded, tradeable setup and carries entry/sl/tp2 + grade', () => {
+    const sig = claudeVerdictToSignal(gradedTradeable)
+    expect(sig).toEqual({ authorized: true, direction: 'long', entry: 100, sl: 95, tp: 110, grade: 'A' })
+  })
+  it('does not authorize a blocked verdict even with a high grade', () => {
+    const blocked: EdgeVerdict = { ...gradedTradeable, status: 'blocked', blockedBy: 'news', tradeable: false }
+    expect(claudeVerdictToSignal(blocked)).toEqual({ authorized: false })
+  })
+  it('does not authorize a graded-but-not-tradeable (C/D) setup', () => {
+    const marginal: EdgeVerdict = { ...gradedTradeable, tradeable: false, score: { total: 70, grade: 'C', sections: [], structureFloorApplied: false } }
+    expect(claudeVerdictToSignal(marginal)).toEqual({ authorized: false })
+  })
+  it('does not authorize a wait verdict', () => {
+    const wait: EdgeVerdict = { status: 'wait', direction: null, blockedBy: 'consolidation', session: { window: 'x', quality: 'low' }, news: null, score: null, setup: null, tradeable: false }
+    expect(claudeVerdictToSignal(wait)).toEqual({ authorized: false })
   })
 })
 
