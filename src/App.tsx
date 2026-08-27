@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import type { Config, MarketContext } from './types'
 import { defaultConfig } from './config'
 import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
+import { evaluateSetupClaude } from './scoring/evaluateSetupClaude'
 import { useMarketData } from './hooks/useMarketData'
 import { useServerSim } from './hooks/useServerSim'
 import { DEMO_PRESETS, type Mode } from './demo/presets'
@@ -16,6 +17,8 @@ import { DemoSwitch } from './ui/DemoSwitch'
 import { DemoBanner } from './ui/DemoBanner'
 import { SimPanel } from './ui/SimPanel'
 import { Tabs, type TabDef } from './ui/Tabs'
+import { StrategySection } from './ui/StrategySection'
+import { ClaudeSignal } from './ui/edge/ClaudeSignal'
 
 type TabKey = 'signal' | 'chart' | 'paper' | 'checklist'
 const TABS: TabDef[] = [
@@ -166,6 +169,9 @@ export default function App(): ReactElement {
   // paper-trading sim is a read-only view of the shared server record — it must run on every
   // render, so it sits above the loading early-return below.
   const verdict = activeCtx ? evaluateSetup(activeCtx, activeConfig) : null
+  // The Claude engine runs on the same candle: last M5 close is `now`, empty events in Phase 1.
+  const now = activeCtx?.m5[activeCtx.m5.length - 1]?.time ?? 0
+  const claudeVerdict = activeCtx ? evaluateSetupClaude(activeCtx, activeConfig, now, []) : null
   const sim = useServerSim()
 
   if (mode === 'live' && !activeCtx) {
@@ -250,9 +256,20 @@ export default function App(): ReactElement {
                   </>
                 )}
               </p>
-              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
-                <TradeCard setup={tradeSetup} />
-                <VetoList vetoes={vetoResults} />
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                <StrategySection engine="dad" subtitle="verbatim 13-step">
+                  <div className="grid grid-cols-1 items-start gap-4">
+                    <TradeCard setup={tradeSetup} />
+                    <VetoList vetoes={vetoResults} />
+                  </div>
+                </StrategySection>
+                <StrategySection engine="claude" subtitle="my criteria">
+                  {claudeVerdict ? (
+                    <ClaudeSignal verdict={claudeVerdict} />
+                  ) : (
+                    <p className="text-[12.5px] text-ink-3">Waiting for candles…</p>
+                  )}
+                </StrategySection>
               </div>
             </>
           )}
