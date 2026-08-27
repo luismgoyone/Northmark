@@ -4,6 +4,7 @@ import { Redis } from '@upstash/redis'
 import { defaultConfig } from '../src/config.js'
 import { simConfigFrom } from '../src/sim/config.js'
 import { initBlob, type SimBlob } from '../src/serverTick.js'
+import { newsConfigured } from './_news.js'
 
 const KEY = 'sim:v2'
 
@@ -26,6 +27,12 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   res.status(200).json({
     state: blob.state,
     claudeState: blob.claudeState,
-    meta: { limitReachedAt: blob.limitReachedAt, updatedAt: blob.updatedAt },
+    news: blob.news,
+    meta: {
+      limitReachedAt: blob.limitReachedAt,
+      updatedAt: blob.updatedAt,
+      newsUpdatedAt: blob.newsFetchedAt,
+      newsActive: newsConfigured(),
+    },
   })
 }

@@ -5,6 +5,7 @@ import { defaultConfig } from '../src/config.js'
 import { simConfigFrom } from '../src/sim/config.js'
 import { initBlob, planFetch, applyTick, applyLimit, type SimBlob } from '../src/serverTick.js'
 import { fetchCandles, CreditLimitError } from './_twelvedata.js'
+import { fetchEconomicCalendar, newsConfigured } from './_news.js'
 
 const KEY = 'sim:v2'
 const OUTPUT_SIZE = 200
@@ -62,7 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const m5 = await fetchCandles('5min', OUTPUT_SIZE)
     const m15 = plan.m15 ? await fetchCandles('15min', OUTPUT_SIZE) : undefined
     const h1 = plan.h1 ? await fetchCandles('1h', OUTPUT_SIZE) : undefined
-    const next = applyTick(blob, { m5, m15, h1 }, defaultConfig, now)
+    const news = plan.news && newsConfigured() ? await fetchEconomicCalendar(now) : undefined
+    const next = applyTick(blob, { m5, m15, h1, news }, defaultConfig, now)
     await redis.set(KEY, next)
     res.status(200).json({
       ok: true,
