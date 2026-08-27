@@ -1,8 +1,7 @@
-import type { Candle, Config, Direction, MarketContext } from '../types.js'
-import { evaluateSetup } from './evaluateSetup.js'
+import type { Config, Direction, MarketContext } from '../types.js'
+import { evaluateSetup, opposingLevel } from './evaluateSetup.js'
 import { atr } from '../indicators/atr.js'
 import { stochastic } from '../indicators/stochastic.js'
-import { swingPoints } from '../indicators/swingPoints.js'
 import { ema } from '../indicators/ema.js'
 import { classifySession, isFridayLate, type SessionWindow } from '../edge/session.js'
 import { newsBlackout, type NewsEvent } from '../edge/newsWindow.js'
@@ -21,17 +20,6 @@ export type EdgeVerdict = {
 }
 
 const ATR_PERIOD = 14
-
-/** Nearest OPPOSING swing level beyond `entry` (mirror of evaluateSetup's private helper). */
-function opposingLevel(candles: Candle[], direction: Direction, entry: number): number | undefined {
-  const { highs, lows } = swingPoints(candles)
-  if (direction === 'long') {
-    const above = highs.map((i) => candles[i]!.high).filter((h) => h > entry)
-    return above.length ? Math.min(...above) : undefined
-  }
-  const below = lows.map((i) => candles[i]!.low).filter((l) => l < entry)
-  return below.length ? Math.max(...below) : undefined
-}
 
 /** Build the weighted-score inputs from an authorized base setup + market context. */
 function buildInputs(

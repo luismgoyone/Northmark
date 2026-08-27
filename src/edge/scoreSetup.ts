@@ -56,7 +56,7 @@ export function scoreSetup(inp: EdgeInputs): EdgeScore {
       items: [
         pt('M15/H1 structure agrees', inp.biasStructureAgrees, 10, 'proven'),
         pt('Price on correct side of EMA', inp.priceCorrectSideEma, 6, 'directional'),
-        pt('No opposing H1 level within 1×ATR', inp.noOpposingLevelWithinAtr, 6, 'directional'),
+        pt('No opposing level within 1×ATR', inp.noOpposingLevelWithinAtr, 6, 'directional'),
       ],
     },
     {

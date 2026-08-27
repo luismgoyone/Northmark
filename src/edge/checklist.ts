@@ -43,7 +43,7 @@ export const CLAUDE_CHECKLIST: ChecklistSection[] = [
     items: [
       weight('M15/H1 structure agrees with direction', 'proven'),
       weight('Price on the correct side of the EMA', 'directional'),
-      weight('No opposing H1 level within 1×ATR of entry', 'directional'),
+      weight('No opposing level within 1×ATR of entry', 'directional'),
     ],
   },
   {

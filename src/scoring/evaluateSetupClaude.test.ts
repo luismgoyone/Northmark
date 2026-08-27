@@ -28,6 +28,7 @@ describe('evaluateSetupClaude', () => {
   it('blocks an authorized setup during a news blackout', () => {
     const events: NewsEvent[] = [{ time: primeInstant, impact: 'high', currency: 'USD', title: 'FOMC' }]
     const v = evaluateSetupClaude(authorizing.ctx, authorizing.config ?? defaultConfig, primeInstant, events)
+    expect(v.setup).not.toBeNull()
     if (v.setup) {
       expect(v.status).toBe('blocked')
       expect(v.blockedBy).toBe('news')
