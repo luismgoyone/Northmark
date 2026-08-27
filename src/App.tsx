@@ -19,6 +19,7 @@ import { SimPanel } from './ui/SimPanel'
 import { Tabs, type TabDef } from './ui/Tabs'
 import { StrategySection } from './ui/StrategySection'
 import { ClaudeSignal } from './ui/edge/ClaudeSignal'
+import { ClaudeChecklist } from './ui/edge/ClaudeChecklist'
 
 type TabKey = 'signal' | 'chart' | 'paper' | 'checklist'
 const TABS: TabDef[] = [
@@ -288,7 +289,16 @@ export default function App(): ReactElement {
               </div>
             ))}
 
-          {tab === 'checklist' && <Checklist gates={gates} />}
+          {tab === 'checklist' && (
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+              <StrategySection engine="dad" subtitle="verbatim 13-step">
+                <Checklist gates={gates} />
+              </StrategySection>
+              <StrategySection engine="claude" subtitle="my criteria">
+                <ClaudeChecklist />
+              </StrategySection>
+            </div>
+          )}
         </div>
 
         <Disclaimer />
