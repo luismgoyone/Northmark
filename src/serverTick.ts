@@ -52,7 +52,7 @@ export function planFetch(blob: SimBlob, now: number): { m15: boolean; h1: boole
   return {
     m15: isDue(M15_MS, blob.m15FetchedAt, now),
     h1: isDue(H1_MS, blob.h1FetchedAt, now),
-    news: isDue(NEWS_MS, blob.newsFetchedAt, now),
+    news: isDue(NEWS_MS, blob.newsFetchedAt ?? null, now),
   }
 }
 
@@ -65,7 +65,7 @@ export function applyTick(
 ): SimBlob {
   const m15 = fetched.m15 ?? blob.m15
   const h1 = fetched.h1 ?? blob.h1
-  const news = fetched.news ?? blob.news
+  const news = fetched.news ?? blob.news ?? []
   const ctx: MarketContext = { m5: fetched.m5, m15, h1 }
 
   const dadSignal = verdictToSignal(evaluateSetup(ctx, config))

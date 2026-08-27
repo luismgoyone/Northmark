@@ -19,8 +19,11 @@ function timeMs(raw: unknown): number | null {
     return raw < 1e12 ? raw * 1000 : raw // seconds vs ms heuristic
   }
   if (typeof raw === 'string') {
-    // "2026-08-28 12:30:00" → treat as UTC.
-    const iso = raw.includes('T') ? raw : raw.replace(' ', 'T') + (raw.endsWith('Z') ? '' : 'Z')
+    // Assume UTC whenever no timezone is given: "2026-08-28 12:30:00" and
+    // "2026-08-28T12:30:00" both get a trailing "Z"; explicit offsets are kept.
+    const withT = raw.replace(' ', 'T')
+    const hasOffset = /(Z|[+-]\d{2}:\d{2})$/.test(withT)
+    const iso = hasOffset ? withT : withT + 'Z'
     const t = Date.parse(iso)
     return Number.isNaN(t) ? null : t
   }

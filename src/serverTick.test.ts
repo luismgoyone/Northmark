@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyLimit, applyTick, initBlob, isCreditLimitError, isDue, planFetch, M15_MS, H1_MS } from './serverTick'
+import type { SimBlob } from './serverTick'
 import { defaultConfig } from './config'
 import type { SimConfig } from './sim/types'
 import type { Candle } from './types'
@@ -72,6 +73,21 @@ describe('news cache', () => {
     const out = applyTick(initBlob(cfg), { m5: [flat(1)], m15: [flat(1)], h1: [flat(1)], news: events }, defaultConfig, now)
     expect(out.news).toEqual(events)
     expect(out.newsFetchedAt).toBe(now)
+  })
+
+  it('survives a pre-Phase-3 blob with no news/newsFetchedAt fields (self-heals)', () => {
+    const now = 5_000_000
+    // Mimic a Phase-2 blob: initBlob shape minus the two Phase-3 news keys.
+    const { news: _news, newsFetchedAt: _nf, ...stale } = initBlob(simConfig)
+    const staleBlob = stale as SimBlob
+
+    // (a) news is treated as due, so the feed self-activates.
+    expect(planFetch(staleBlob, now).news).toBe(true)
+
+    // (b) applyTick must not throw and news normalizes to an array.
+    const out = applyTick(staleBlob, { m5: [flat(1)], m15: [flat(1)], h1: [flat(1)] }, defaultConfig, now)
+    expect(Array.isArray(out.news)).toBe(true)
+    expect(out.news).toEqual([])
   })
 })
 
