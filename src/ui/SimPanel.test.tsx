@@ -6,7 +6,7 @@ import { simStats } from '../sim/stats'
 import type { SimState } from '../sim/types'
 import type { SimMeta } from '../hooks/useServerSim'
 
-const NO_META: SimMeta = { limitReachedAt: null, updatedAt: null }
+const NO_META: SimMeta = { limitReachedAt: null, updatedAt: null, newsUpdatedAt: null, newsActive: false }
 const empty: SimState = { startingBalance: 10_000, balance: 10_000, open: null, armed: true, trades: [], nextId: 1 }
 
 const winTrade = {
@@ -40,13 +40,13 @@ test('a trade row shows entry, SL, TP, exit, R, USD P&L, lot, risk $, and openâ†
 })
 
 test('shows the data-limit note when the limit is newer than the last update', () => {
-  const meta: SimMeta = { limitReachedAt: Date.UTC(2026, 7, 23, 13, 50), updatedAt: Date.UTC(2026, 7, 23, 12, 0) }
+  const meta: SimMeta = { limitReachedAt: Date.UTC(2026, 7, 23, 13, 50), updatedAt: Date.UTC(2026, 7, 23, 12, 0), newsUpdatedAt: null, newsActive: false }
   render(<SimPanel state={empty} stats={simStats(empty)} meta={meta} />)
   expect(screen.getByText(/Data limit reached/i)).toBeInTheDocument()
 })
 
 test('hides the data-limit note once an update is newer', () => {
-  const meta: SimMeta = { limitReachedAt: Date.UTC(2026, 7, 23, 12, 0), updatedAt: Date.UTC(2026, 7, 23, 13, 0) }
+  const meta: SimMeta = { limitReachedAt: Date.UTC(2026, 7, 23, 12, 0), updatedAt: Date.UTC(2026, 7, 23, 13, 0), newsUpdatedAt: null, newsActive: false }
   render(<SimPanel state={empty} stats={simStats(empty)} meta={meta} />)
   expect(screen.queryByText(/Data limit reached/i)).not.toBeInTheDocument()
 })
@@ -58,7 +58,7 @@ test('shows the grade chip on a graded trade', () => {
     grade: 'A',
   } as const
   const state = { startingBalance: 200, balance: 204, open: null, armed: true, nextId: 10, trades: [graded] }
-  render(<SimPanel state={state} stats={simStats(state)} meta={{ limitReachedAt: null, updatedAt: 1 }} />)
+  render(<SimPanel state={state} stats={simStats(state)} meta={{ limitReachedAt: null, updatedAt: 1, newsUpdatedAt: null, newsActive: false }} />)
   expect(screen.getByText('A')).toBeInTheDocument()
 })
 

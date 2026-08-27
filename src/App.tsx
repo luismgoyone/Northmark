@@ -20,6 +20,7 @@ import { Tabs, type TabDef } from './ui/Tabs'
 import { StrategySection } from './ui/StrategySection'
 import { ClaudeSignal } from './ui/edge/ClaudeSignal'
 import { ClaudeChecklist } from './ui/edge/ClaudeChecklist'
+import { GradeAnalytics } from './ui/edge/GradeAnalytics'
 
 type TabKey = 'signal' | 'chart' | 'paper' | 'checklist'
 const TABS: TabDef[] = [
@@ -291,6 +292,7 @@ export default function App(): ReactElement {
                 </StrategySection>
                 <StrategySection engine="claude" subtitle="my criteria">
                   <SimPanel state={sim.claudeState} stats={sim.claudeStats} meta={sim.meta} />
+                  <GradeAnalytics state={sim.claudeState} />
                 </StrategySection>
               </div>
             ) : (
