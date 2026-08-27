@@ -39,6 +39,17 @@ describe('applyTick', () => {
     expect(refetched.m15).toEqual([flat(2)])
     expect(refetched.m15FetchedAt).toBe(1000)
   })
+
+  it('advances BOTH accounts from the same candles', () => {
+    const now = 1_000_000
+    const m5 = [flat(1), flat(2), flat(3)]
+    // First tick seeds both watermarks (no backfill), leaving them non-null.
+    const seeded = applyTick(initBlob(simConfig), { m5, m15: [flat(1)], h1: [flat(1)] }, defaultConfig, now)
+    expect(seeded.lastProcessedTime).not.toBeNull()
+    expect(seeded.claudeLastProcessedTime).not.toBeNull()
+    // Both watermarks track the same latest candle after seeding.
+    expect(seeded.claudeLastProcessedTime).toBe(seeded.lastProcessedTime)
+  })
 })
 
 describe('initBlob', () => {
