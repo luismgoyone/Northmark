@@ -1,6 +1,5 @@
 import type { Config, MarketContext } from './types.js'
 import type { SetupVerdict } from './scoring/evaluateSetup.js'
-import { evaluateSetup } from './scoring/evaluateSetup.js'
 import type { EdgeVerdict } from './scoring/evaluateSetupClaude.js'
 import { simStep, type SetupSignal } from './sim/engine.js'
 import type { SimState } from './sim/types.js'
@@ -45,6 +44,7 @@ export function advanceSim(
   lastProcessedTime: number | null,
   ctx: MarketContext,
   config: Config,
+  signal: SetupSignal,
 ): { state: SimState; lastProcessedTime: number | null } {
   // First run: never backfill history. Seed the watermark to the latest candle and start
   // recording forward from the next tick (no open/settle against historical candles).
@@ -52,7 +52,6 @@ export function advanceSim(
     const latest = ctx.m5[ctx.m5.length - 1]
     return { state, lastProcessedTime: latest ? latest.time : null }
   }
-  const signal = verdictToSignal(evaluateSetup(ctx, config))
   const simConfig = {
     startingBalance: state.startingBalance,
     riskPct: config.riskPct,
