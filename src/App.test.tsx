@@ -164,3 +164,11 @@ test('switching back to Live from a demo preset removes the banner', () => {
   fireEvent.change(select, { target: { value: 'live' } })
   expect(screen.queryByText(/DEMO DATA/i)).not.toBeInTheDocument()
 })
+
+test('shows both engines on the Signal tab', () => {
+  // Signal is the default tab; live ctx is present so both sections render.
+  mockUseMarketData.mockReturnValue({ ctx, loading: false, error: null })
+  render(<App />)
+  expect(screen.getByRole('heading', { name: /dad \+ chatgpt/i })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: /claude/i })).toBeInTheDocument()
+})

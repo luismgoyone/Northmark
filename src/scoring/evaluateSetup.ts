@@ -23,7 +23,7 @@ const WAIT = (id: string): GateResult => ({ id, status: 'wait', detail: 'Not eva
 const ORDER = ['h1-m15-bias', 'consolidation', 'level-id', 'breakout-close', 'retest', 'confirmation', 'risk-reward'] as const
 
 /** Nearest significant OPPOSING level beyond `entry`, for the structural TP cap (checklist step 11). */
-function opposingLevel(candles: Candle[], direction: Direction, entry: number): number | undefined {
+export function opposingLevel(candles: Candle[], direction: Direction, entry: number): number | undefined {
   const { highs, lows } = swingPoints(candles)
   if (direction === 'long') {
     const above = highs.map((i) => candles[i]!.high).filter((h) => h > entry)
