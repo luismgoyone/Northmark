@@ -68,11 +68,12 @@ export function applyTick(
   const news = fetched.news ?? blob.news ?? []
   const ctx: MarketContext = { m5: fetched.m5, m15, h1 }
 
-  const dadSignal = verdictToSignal(evaluateSetup(ctx, config))
-  const dad = advanceSim(blob.state, blob.lastProcessedTime, ctx, config, dadSignal)
-
-  const claudeSignal = claudeVerdictToSignal(evaluateSetupClaude(ctx, config, now, news))
-  const claude = advanceSim(blob.claudeState, blob.claudeLastProcessedTime, ctx, config, claudeSignal)
+  const dad = advanceSim(blob.state, blob.lastProcessedTime, ctx, config, (c) =>
+    verdictToSignal(evaluateSetup(c, config)),
+  )
+  const claude = advanceSim(blob.claudeState, blob.claudeLastProcessedTime, ctx, config, (c, t) =>
+    claudeVerdictToSignal(evaluateSetupClaude(c, config, t, news)),
+  )
 
   return {
     ...blob,
