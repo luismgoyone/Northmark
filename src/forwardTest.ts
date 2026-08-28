@@ -31,20 +31,30 @@ export function claudeVerdictToSignal(verdict: EdgeVerdict): SetupSignal {
   return { authorized: false }
 }
 
+export type SignalFn = (ctx: MarketContext, candleTime: number) => SetupSignal
+
+/** Context as-of `time`: m5 up to index `i`, and higher timeframes with time ≤ `time` (no look-ahead). */
+function sliceContextAt(ctx: MarketContext, i: number, time: number): MarketContext {
+  return {
+    m5: ctx.m5.slice(0, i + 1),
+    m15: ctx.m15.filter((c) => c.time <= time),
+    h1: ctx.h1.filter((c) => c.time <= time),
+  }
+}
+
 /**
- * Step the sim over EVERY M5 candle newer than `lastProcessedTime`, using the verdict computed
- * once from the full current context. Robust to delayed/missed ticks — a batch of new candles is
- * simply processed on the next run, so no candle (or exit) is skipped. Pure.
- *
- * Approximation (documented): exits (`settle`) read only each candle's high/low and are
- * per-candle-accurate; opens use the single current verdict. Correct for a history/win-rate tool.
+ * Step the sim over EVERY M5 candle newer than `lastProcessedTime`, re-evaluating the strategy
+ * ON EACH candle (context sliced up to that candle) via `signalFn`. This makes trade-opening
+ * independent of tick cadence: setups that formed between sparse ticks are caught, because each
+ * candle in the gap is replayed with its own evaluation. Settle reads each candle's high/low
+ * (SL-first) and is per-candle-accurate. Pure. A first run (null watermark) seeds and never backfills.
  */
 export function advanceSim(
   state: SimState,
   lastProcessedTime: number | null,
   ctx: MarketContext,
   config: Config,
-  signal: SetupSignal,
+  signalFn: SignalFn,
 ): { state: SimState; lastProcessedTime: number | null } {
   // First run: never backfill history. Seed the watermark to the latest candle and start
   // recording forward from the next tick (no open/settle against historical candles).
@@ -59,8 +69,16 @@ export function advanceSim(
   }
   let s = state
   let last = lastProcessedTime
-  for (const candle of ctx.m5) {
+  for (let i = 0; i < ctx.m5.length; i++) {
+    const candle = ctx.m5[i]!
     if (candle.time <= last) continue
+    let signal: SetupSignal
+    try {
+      signal = signalFn(sliceContextAt(ctx, i, candle.time), candle.time)
+    } catch {
+      // Too-short window / evaluation error on this candle → no open; settle still runs.
+      signal = { authorized: false }
+    }
     s = simStep(s, signal, simConfig, candle)
     last = candle.time
   }
