@@ -4,7 +4,7 @@ import type { PositionState } from './types.js'
 import type { AcceptanceRecord, Store } from './ports.js'
 
 const K = {
-  raw: 'exec:raw', acceptance: 'exec:acceptance', broker: 'exec:broker',
+  raw: 'exec:raw', acceptance: 'exec:acceptance', broker: 'exec:broker', reconcile: 'exec:reconcile',
   state: 'exec:position', seen: (id: string) => `exec:seen:${id}`,
 }
 const CAP = 500
@@ -20,6 +20,7 @@ export function redisStore(redis: Redis): Store {
     appendRaw: (body, at) => push(K.raw, { at, body }),
     appendAcceptance: (rec: AcceptanceRecord) => push(K.acceptance, rec),
     appendBroker: (rec) => push(K.broker, rec),
+    appendReconcile: (rec) => push(K.reconcile, rec),
     getState: async () => ((await redis.get<PositionState>(K.state)) ?? 'FLAT'),
     setState: async (s) => { await redis.set(K.state, s) },
     seen: async (eventId) => {

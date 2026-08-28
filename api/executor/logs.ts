@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!tokenOk(req, secret)) { res.status(401).json({ ok: false, error: 'unauthorized' }); return }
 
   const redis = getRedis()
-  if (!redis) { res.status(200).json({ state: 'FLAT', acceptance: [], raw: [], broker: [] }); return }
+  if (!redis) { res.status(200).json({ state: 'FLAT', acceptance: [], raw: [], broker: [], reconcile: [] }); return }
   const store = redisStore(redis)
   res.setHeader('Cache-Control', 'no-store')
   res.status(200).json({
@@ -31,5 +31,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     acceptance: await store.recent('acceptance', 25),
     raw: await store.recent('raw', 25),
     broker: await store.recent('broker', 25),
+    reconcile: await store.recent('reconcile', 25),
   })
 }

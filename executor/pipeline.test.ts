@@ -9,7 +9,7 @@ function memStore(): Store & { accepts: AcceptanceRecord[] } {
   let state: PositionState = 'FLAT'; const seen = new Set<string>(); const accepts: AcceptanceRecord[] = []
   return {
     accepts,
-    appendRaw: async (_body: string, _at: number) => {}, appendBroker: async () => {}, recent: async () => [],
+    appendRaw: async (_body: string, _at: number) => {}, appendBroker: async () => {}, appendReconcile: async () => {}, recent: async () => [],
     appendAcceptance: async (r) => { accepts.push(r) },
     getState: async () => state, setState: async (s) => { state = s },
     seen: async (id) => { if (seen.has(id)) return true; seen.add(id); return false },

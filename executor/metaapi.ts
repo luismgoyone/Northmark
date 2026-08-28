@@ -8,6 +8,7 @@ type RpcConnection = {
   createMarketBuyOrder(symbol: string, volume: number, sl: number, tp: number, options?: unknown): Promise<{ orderId?: string; stringCode?: string }>
   createMarketSellOrder(symbol: string, volume: number, sl: number, tp: number, options?: unknown): Promise<{ orderId?: string; stringCode?: string }>
   closePositionsBySymbol(symbol: string): Promise<{ orderId?: string; stringCode?: string }>
+  getPositions(): Promise<Array<{ symbol: string; type: string; volume: number }>>
 }
 type Action =
   | { kind: 'open'; order: BrokerOrder; eventId: string }
@@ -71,5 +72,15 @@ export class MetaApiExecutor implements Executor {
   async closePosition(direction: 'long' | 'short', eventId: string): Promise<ExecOutcome> {
     try { return await executeWith(await this.connection(), { kind: 'close', symbol: this.cfg.symbol, direction, eventId }) }
     catch (err) { return { status: 'error', detail: `metaapi connect/close failed: ${err instanceof Error ? err.message : err}` } }
+  }
+
+  // Fetch open broker positions for the traded symbol. Lets connect/broker errors propagate
+  // (do NOT swallow → []): the reconcile endpoint catches and logs them so drift isn't masked.
+  async listPositions(): Promise<import('./reconcile.js').BrokerPosition[]> {
+    const conn = await this.connection()
+    const raw = await conn.getPositions()
+    return raw
+      .filter((p) => p.symbol === this.cfg.symbol)
+      .map((p) => ({ symbol: p.symbol, direction: /BUY/i.test(p.type) ? 'long' as const : 'short' as const, volume: p.volume }))
   }
 }
