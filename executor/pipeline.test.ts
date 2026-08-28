@@ -44,4 +44,15 @@ describe('handleSignal', () => {
     const rec = await handleSignal(body({ event_id: 'b', action: 'buy', market_position: 'long', prev_market_position: 'flat', entry: 100, sl: 99, tp: 101, lot: 0.01 }), deps(store))
     expect(rec.outcome).toBe('REJECTED'); expect(rec.reason).toMatch(/POSITION|pyramiding|already/i)
   })
+  it('reversal with a bad entry rejects WITHOUT closing (validate-all-before-execute)', async () => {
+    const store = memStore()
+    // open LONG first
+    await handleSignal(body({ event_id: 'o', action: 'buy', market_position: 'long', prev_market_position: 'flat', entry: 100, sl: 99, tp: 101, lot: 0.01 }), deps(store))
+    const closes: string[] = []
+    const spyExec = { openPosition: async () => ({ status: 'stub' as const, detail: 'o' }), closePosition: async () => { closes.push('closed'); return { status: 'stub' as const, detail: 'c' } } }
+    // reversal long→short but the SHORT entry has SL/TP missing → must reject, and must NOT have closed
+    const rec = await handleSignal(body({ event_id: 'r', action: 'sell', market_position: 'short', prev_market_position: 'long' /* no entry/sl/tp */ }), { store, executor: spyExec, secret: 'S', now: 2 })
+    expect(rec.outcome).toBe('REJECTED')
+    expect(closes).toHaveLength(0) // the exit leg never executed
+  })
 })

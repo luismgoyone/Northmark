@@ -1,6 +1,6 @@
 // executor/pipeline.ts
-import type { PositionState } from './types.js'
-import type { AcceptanceRecord, Executor, Store } from './ports.js'
+import type { BrokerOrder, PositionState, SignalEvent } from './types.js'
+import type { AcceptanceRecord, Executor, ExecOutcome, Store } from './ports.js'
 import { ExecError } from './errors.js'
 import { parseSignal } from './parse.js'
 import { classify } from './classify.js'
@@ -63,25 +63,46 @@ export async function handleSignal(rawBody: string, deps: Deps): Promise<Accepta
       return commit(build('DUPLICATE', 'duplicate event_id — already processed'))
     }
 
-    // 6) Classify + apply each event, threading state; validate/execute per event.
+    // 6) Classify, then validate-ALL-legs-BEFORE-executing-ANY.
+    //    Apply the state machine across every leg up front (throws POSITION on illegal
+    //    transitions) and build+validate every entry order (throws RISK/LOT/SYMBOL).
+    //    A throw here REJECTs before ANY broker action — so a reversal with a bad ENTRY
+    //    never fires its EXIT leg.
     const evs = classify(sig)
+    const orders = new Map<SignalEvent, BrokerOrder>()
     let st = stateBefore
     for (const ev of evs) {
       st = applyEvent(st, ev)
+      if (ev.isEntry) orders.set(ev, validateEntry(ev, sig))
+    }
+
+    // 7) Execute legs in order (exits close, entries open). Log every broker outcome.
+    //    On a broker error, stop further legs and reject (state below reflects only what applied).
+    let applied = stateBefore
+    for (const ev of evs) {
+      let outcome: ExecOutcome
       if (ev.isEntry) {
-        const order = validateEntry(ev, sig)
-        const outcome = await executor.openPosition(order, eventId)
-        try { await store.appendBroker({ eventId, event: ev.type, mode: 'stub', order, outcome, at: now }) } catch { /* best-effort */ }
+        const order = orders.get(ev)!
+        outcome = await executor.openPosition(order, eventId)
+        try { await store.appendBroker({ eventId, event: ev.type, order, outcome, at: now }) } catch { /* best-effort */ }
       } else {
-        const outcome = await executor.closePosition(ev.direction, eventId)
-        try { await store.appendBroker({ eventId, event: ev.type, mode: 'stub', direction: ev.direction, outcome, at: now }) } catch { /* best-effort */ }
+        outcome = await executor.closePosition(ev.direction, eventId)
+        try { await store.appendBroker({ eventId, event: ev.type, direction: ev.direction, outcome, at: now }) } catch { /* best-effort */ }
       }
+      if (outcome.status === 'error') {
+        applied = applyEvent(applied, ev)
+        events.push(ev.type)
+        stateAfter = applied
+        await store.setState(applied)
+        return commit(build('REJECTED', `BROKER: ${ev.type} failed — ${outcome.detail}`))
+      }
+      applied = applyEvent(applied, ev)
       events.push(ev.type)
     }
 
-    // 7) Persist the advanced state, then accept.
-    stateAfter = st
-    await store.setState(st)
+    // 8) Persist the advanced state, then accept.
+    stateAfter = applied
+    await store.setState(applied)
     return commit(build('ACCEPTED', `ok — ${events.join(', ')}`))
   } catch (err) {
     if (err instanceof ExecError) return commit(build('REJECTED', `${err.category}: ${err.message}`))
