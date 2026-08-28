@@ -55,4 +55,26 @@ describe('handleSignal', () => {
     expect(rec.outcome).toBe('REJECTED')
     expect(closes).toHaveLength(0) // the exit leg never executed
   })
+  it('LONG exit whose broker close errors REJECTS and keeps state LONG (broker still holds it)', async () => {
+    const store = memStore()
+    // open LONG first (stub)
+    await handleSignal(body({ event_id: 'o', action: 'buy', market_position: 'long', prev_market_position: 'flat', entry: 100, sl: 99, tp: 101, lot: 0.01 }), deps(store))
+    // long→flat EXIT whose closePosition returns status:'error'
+    const spyExec = { openPosition: async () => ({ status: 'stub' as const, detail: 'o' }), closePosition: async () => ({ status: 'error' as const, detail: 'broker down' }) }
+    const rec = await handleSignal(body({ event_id: 'x', action: 'sell', market_position: 'flat', prev_market_position: 'long' }), { store, executor: spyExec, secret: 'S', now: 3 })
+    expect(rec.outcome).toBe('REJECTED')
+    expect(rec.reason).toMatch(/BROKER/)
+    expect(await store.getState()).toBe('LONG') // NOT FLAT — broker still holds the position
+  })
+  it('reversal long→short where EXIT fills but OPEN errors REJECTS and keeps state FLAT (broker is flat, not SHORT)', async () => {
+    const store = memStore()
+    // open LONG first (stub)
+    await handleSignal(body({ event_id: 'o', action: 'buy', market_position: 'long', prev_market_position: 'flat', entry: 100, sl: 99, tp: 101, lot: 0.01 }), deps(store))
+    // reversal long→short: closePosition succeeds, openPosition errors
+    const spyExec = { openPosition: async () => ({ status: 'error' as const, detail: 'entry rejected' }), closePosition: async () => ({ status: 'stub' as const, detail: 'c' }) }
+    const rec = await handleSignal(body({ event_id: 'r', action: 'sell', market_position: 'short', prev_market_position: 'long', entry: 100, sl: 101, tp: 98.8, lot: 0.01 }), { store, executor: spyExec, secret: 'S', now: 4 })
+    expect(rec.outcome).toBe('REJECTED')
+    expect(rec.reason).toMatch(/BROKER/)
+    expect(await store.getState()).toBe('FLAT') // NOT SHORT — broker filled the exit but the open failed
+  })
 })

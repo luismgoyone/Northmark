@@ -84,14 +84,18 @@ export async function handleSignal(rawBody: string, deps: Deps): Promise<Accepta
       if (ev.isEntry) {
         const order = orders.get(ev)!
         outcome = await executor.openPosition(order, eventId)
-        try { await store.appendBroker({ eventId, event: ev.type, order, outcome, at: now }) } catch { /* best-effort */ }
+        try { await store.appendBroker({ eventId, event: ev.type, order, outcome, status: outcome.status, at: now }) } catch { /* best-effort */ }
       } else {
         outcome = await executor.closePosition(ev.direction, eventId)
-        try { await store.appendBroker({ eventId, event: ev.type, direction: ev.direction, outcome, at: now }) } catch { /* best-effort */ }
+        try { await store.appendBroker({ eventId, event: ev.type, direction: ev.direction, outcome, status: outcome.status, at: now }) } catch { /* best-effort */ }
       }
       if (outcome.status === 'error') {
-        applied = applyEvent(applied, ev)
-        events.push(ev.type)
+        // Broker rejected this leg. Do NOT apply the failed event to our state:
+        // persisting a state the broker never reached would let the next entry
+        // double-open (a failed EXIT would read FLAT while the broker still holds
+        // the position). Keep `applied` at the last SUCCESSFULLY-executed leg —
+        // that already equals what actually executed at the broker.
+        events.push(ev.type) // record the attempt
         stateAfter = applied
         await store.setState(applied)
         return commit(build('REJECTED', `BROKER: ${ev.type} failed — ${outcome.detail}`))
