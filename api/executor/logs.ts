@@ -9,7 +9,19 @@ function getRedis(): Redis | null {
   return url && token ? new Redis({ url, token }) : null
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+function tokenOk(req: VercelRequest, secret: string): boolean {
+  const tokenParam = req.query.token
+  const token = Array.isArray(tokenParam) ? tokenParam[0] : tokenParam
+  // Length-guard then compare; secrets are short so a plain compare is acceptable here.
+  return typeof token === 'string' && token.length === secret.length && token === secret
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Gate: this endpoint serves the raw/acceptance/broker logs, so it must not be public.
+  const secret = process.env.WEBHOOK_SECRET
+  if (!secret) { res.status(500).json({ ok: false, error: 'server missing WEBHOOK_SECRET' }); return }
+  if (!tokenOk(req, secret)) { res.status(401).json({ ok: false, error: 'unauthorized' }); return }
+
   const redis = getRedis()
   if (!redis) { res.status(200).json({ state: 'FLAT', acceptance: [], raw: [], broker: [] }); return }
   const store = redisStore(redis)

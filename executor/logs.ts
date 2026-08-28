@@ -17,7 +17,7 @@ export function redisStore(redis: Redis): Store {
     await redis.ltrim(key, 0, CAP - 1)
   }
   return {
-    appendRaw: (body) => push(K.raw, { at: undefined, body }),
+    appendRaw: (body, at) => push(K.raw, { at, body }),
     appendAcceptance: (rec: AcceptanceRecord) => push(K.acceptance, rec),
     appendBroker: (rec) => push(K.broker, rec),
     getState: async () => ((await redis.get<PositionState>(K.state)) ?? 'FLAT'),

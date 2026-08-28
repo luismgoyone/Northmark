@@ -6,6 +6,7 @@ import { parseSignal } from './parse.js'
 import { classify } from './classify.js'
 import { applyEvent } from './state.js'
 import { validateEntry } from './validate.js'
+import { redactSecret } from './redact.js'
 
 export type Deps = { store: Store; executor: Executor; secret: string; now: number }
 
@@ -32,8 +33,9 @@ export async function handleSignal(rawBody: string, deps: Deps): Promise<Accepta
   }
 
   try {
-    // 1) Raw log — always, before anything can reject.
-    try { await store.appendRaw(rawBody) } catch { /* best-effort raw log */ }
+    // 1) Raw log — always, before anything can reject. Redact the shared secret first:
+    // the raw log is served by the diagnostics endpoint, so it must never carry the secret.
+    try { await store.appendRaw(redactSecret(rawBody), now) } catch { /* best-effort raw log */ }
 
     // Read current position once for the record's before/after fields.
     stateBefore = await store.getState()

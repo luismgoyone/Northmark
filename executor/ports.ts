@@ -14,7 +14,7 @@ export type AcceptanceRecord = {
 }
 
 export interface Store {
-  appendRaw(body: string): Promise<void>
+  appendRaw(body: string, at: number): Promise<void>
   appendAcceptance(rec: AcceptanceRecord): Promise<void>
   appendBroker(rec: unknown): Promise<void>
   getState(): Promise<PositionState>
