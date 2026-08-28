@@ -7,6 +7,7 @@ const fakeConn = {
   async createMarketBuyOrder(sym: string, vol: number, sl: number, tp: number) { this.calls.push(`buy ${sym} ${vol} ${sl} ${tp}`); return { orderId: '111', stringCode: 'TRADE_RETCODE_DONE' } },
   async createMarketSellOrder(sym: string, vol: number, sl: number, tp: number) { this.calls.push(`sell ${sym} ${vol} ${sl} ${tp}`); return { orderId: '222', stringCode: 'TRADE_RETCODE_DONE' } },
   async closePositionsBySymbol(sym: string) { this.calls.push(`close ${sym}`); return { orderId: '333', stringCode: 'TRADE_RETCODE_DONE' } },
+  async getPositions() { this.calls.push('getPositions'); return [] as Array<{ symbol: string; type: string; volume: number }> },
 }
 
 describe('executeWith', () => {
