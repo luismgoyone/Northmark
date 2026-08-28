@@ -52,6 +52,18 @@ describe('applyTick', () => {
     // Both watermarks track the same latest candle after seeding.
     expect(seeded.claudeLastProcessedTime).toBe(seeded.lastProcessedTime)
   })
+
+  it('processes EVERY new candle per tick: both watermarks advance to the latest candle time', () => {
+    const now = 1_000_000
+    // First tick seeds the watermarks to candle 3 (first run never backfills).
+    const seeded = applyTick(initBlob(simConfig), { m5: [flat(1), flat(2), flat(3)], m15: [flat(1)], h1: [flat(1)] }, defaultConfig, now)
+    expect(seeded.lastProcessedTime).toBe(3)
+    // Second tick delivers a gap of new candles (4..7). Per-candle stepping must advance both
+    // watermarks all the way to the latest candle, proving every candle in the gap was evaluated.
+    const next = applyTick(seeded, { m5: [flat(4), flat(5), flat(6), flat(7)] }, defaultConfig, now + M15_MS)
+    expect(next.lastProcessedTime).toBe(7)
+    expect(next.claudeLastProcessedTime).toBe(7)
+  })
 })
 
 describe('news cache', () => {

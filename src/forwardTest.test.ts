@@ -93,10 +93,10 @@ describe('advanceSim', () => {
   it('steps only candles newer than the watermark and advances it to the latest time', () => {
     const s0 = initialSimState(simConfig)
     const ctx = ctxAt([1, 2, 3])
-    const r1 = advanceSim(s0, null, ctx, defaultConfig, dadSignalFor(ctx))
+    const r1 = advanceSim(s0, null, ctx, defaultConfig, () => dadSignalFor(ctx))
     expect(r1.lastProcessedTime).toBe(3)
     // Re-running with the same candles is a no-op (nothing newer than the watermark).
-    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig, dadSignalFor(ctx))
+    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig, () => dadSignalFor(ctx))
     expect(r2.lastProcessedTime).toBe(3)
     expect(r2.state).toEqual(r1.state)
   })
@@ -104,7 +104,7 @@ describe('advanceSim', () => {
   it('returns the same watermark and unchanged state when there are no candles', () => {
     const s0 = initialSimState(simConfig)
     const ctx: MarketContext = { m5: [], m15: [flat], h1: [flat] }
-    const r = advanceSim(s0, 5, ctx, defaultConfig, dadSignalFor(ctx))
+    const r = advanceSim(s0, 5, ctx, defaultConfig, () => dadSignalFor(ctx))
     expect(r.lastProcessedTime).toBe(5)
     expect(r.state).toBe(s0)
   })
@@ -116,7 +116,7 @@ describe('advanceSim', () => {
     const ctx: MarketContext = { m5, m15, h1 }
 
     const s0 = initialSimState(simConfig)
-    const r1 = advanceSim(s0, null, ctx, defaultConfig, dadSignalFor(ctx))
+    const r1 = advanceSim(s0, null, ctx, defaultConfig, () => dadSignalFor(ctx))
     // First run must not open (or settle) a trade against the historical candles it just fetched.
     expect(r1.state.trades).toEqual([])
     expect(r1.state.open).toBeNull()
@@ -124,7 +124,7 @@ describe('advanceSim', () => {
     expect(r1.lastProcessedTime).toBe(m5[m5.length - 1]!.time)
 
     // A second call against the SAME context (nothing newer than the seeded watermark) is a no-op.
-    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig, dadSignalFor(ctx))
+    const r2 = advanceSim(r1.state, r1.lastProcessedTime, ctx, defaultConfig, () => dadSignalFor(ctx))
     expect(r2.lastProcessedTime).toBe(r1.lastProcessedTime)
     expect(r2.state).toEqual(r1.state)
   })
@@ -134,10 +134,47 @@ describe('advanceSim', () => {
     const start = initialSimState(simConfigFrom(config))
     const ctx = ctxAt([1, 2, 3])
     // Seed the watermark first (first run never backfills).
-    const seeded = advanceSim(start, null, ctx, config, { authorized: false })
+    const seeded = advanceSim(start, null, ctx, config, () => ({ authorized: false }))
     const openSig = { authorized: true, direction: 'long', entry: 100, sl: 95, tp: 110, grade: 'B' } as const
     const nextCtx = { ...ctx, m5: [...ctx.m5, { time: (seeded.lastProcessedTime ?? 0) + 300_000, open: 100, high: 101, low: 99, close: 100 }] }
-    const out = advanceSim(seeded.state, seeded.lastProcessedTime, nextCtx, config, openSig)
+    const out = advanceSim(seeded.state, seeded.lastProcessedTime, nextCtx, config, () => openSig)
     expect(out.state.open?.grade).toBe('B')
+  })
+
+  it('evaluates per-candle: opens only on the candle its signalFn authorizes', () => {
+    const config = defaultConfig
+    const simConfig = simConfigFrom(config)
+    const mk = (t: number, price = 100) => ({ time: t, open: price, high: price + 0.5, low: price - 0.5, close: price })
+    const ctx = { m5: [mk(1), mk(2), mk(3), mk(4)], m15: [mk(1)], h1: [mk(1)] }
+    const auth = { authorized: true, direction: 'long', entry: 100, sl: 99, tp: 102, grade: 'A' } as const
+    const signalFn = (_c: MarketContext, t: number) => (t === 3 ? auth : ({ authorized: false } as const))
+    // watermark at 0 → all four candles are "new"; only t=3 authorizes.
+    const out = advanceSim(initialSimState(simConfig), 0, ctx, config, signalFn)
+    expect(out.state.open?.openedAtTime).toBe(3)
+    expect(out.state.open?.grade).toBe('A')
+    expect(out.lastProcessedTime).toBe(4)
+  })
+
+  it('guards a throwing signalFn: no open on that candle, but settle + watermark still advance', () => {
+    const config = defaultConfig
+    const simConfig = simConfigFrom(config)
+    const bar5 = (t: number, high: number, low: number): Candle => ({ time: t, open: 100, high, low, close: 100 })
+    const ctx: MarketContext = {
+      // t=2 opens; t=3 throws (no new open) yet its high 103 hits TP 102 → the open settles as a win.
+      m5: [bar5(1, 100.5, 99.5), bar5(2, 100.5, 99.5), bar5(3, 103, 99.5), bar5(4, 100.5, 99.5)],
+      m15: [bar5(1, 100.5, 99.5)],
+      h1: [bar5(1, 100.5, 99.5)],
+    }
+    const openSig = { authorized: true, direction: 'long', entry: 100, sl: 99, tp: 102 } as const
+    const signalFn = (_c: MarketContext, t: number) => {
+      if (t === 2) return openSig
+      if (t === 3) throw new Error('evaluation blew up on this candle')
+      return { authorized: false } as const
+    }
+    const out = advanceSim(initialSimState(simConfig), 1, ctx, config, signalFn)
+    expect(out.state.trades).toHaveLength(1) // opened at t=2, settled at t=3 despite the throw
+    expect(out.state.trades[0]?.exitReason).toBe('tp')
+    expect(out.state.open).toBeNull()
+    expect(out.lastProcessedTime).toBe(4) // watermark advanced past the throwing candle
   })
 })
