@@ -17,8 +17,9 @@ export interface Store {
   appendRaw(body: string, at: number): Promise<void>
   appendAcceptance(rec: AcceptanceRecord): Promise<void>
   appendBroker(rec: unknown): Promise<void>
+  appendReconcile(rec: unknown): Promise<void>
   getState(): Promise<PositionState>
   setState(s: PositionState): Promise<void>
   seen(eventId: string): Promise<boolean>   // true if already processed; records it if not
-  recent(kind: 'raw' | 'acceptance' | 'broker', n: number): Promise<unknown[]>
+  recent(kind: 'raw' | 'acceptance' | 'broker' | 'reconcile', n: number): Promise<unknown[]>
 }
