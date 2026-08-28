@@ -2,7 +2,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Redis } from '@upstash/redis'
 import { redisStore } from '../../executor/logs.js'
 import { StubExecutor } from '../../executor/executor.js'
+import { MetaApiExecutor } from '../../executor/metaapi.js'
+import { executionGate } from '../../executor/gate.js'
+import { symbolFor } from '../../executor/validate.js'
 import { handleSignal } from '../../executor/pipeline.js'
+import type { Executor } from '../../executor/ports.js'
 
 /** Upstash Redis from whichever env names the Vercel integration injected; null when unset. */
 function getRedis(): Redis | null {
@@ -18,7 +22,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const redis = getRedis()
   if (!redis) { res.status(500).json({ ok: false, error: 'server missing Redis' }); return }
   const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {})
-  const rec = await handleSignal(rawBody, { store: redisStore(redis), executor: new StubExecutor(), secret, now: Date.now() })
+  // Pick the executor from the gate: real MetaApi (demo) only when explicitly enabled + creds present,
+  // otherwise the dormant stub. No order can be placed without explicit enablement.
+  const gate = executionGate(process.env)
+  const executor: Executor = gate.enabled
+    ? new MetaApiExecutor({ token: process.env.METAAPI_TOKEN!, accountId: process.env.METAAPI_ACCOUNT_ID!, symbol: symbolFor('XAUUSD'), allowLive: process.env.EXEC_ALLOW_LIVE === 'true' })
+    : new StubExecutor()
+  const rec = await handleSignal(rawBody, { store: redisStore(redis), executor, secret, now: Date.now() })
   // Always 200 so TradingView doesn't retry-storm; the acceptance record carries the real outcome.
-  res.status(200).json({ ok: rec.outcome !== 'REJECTED', outcome: rec.outcome, reason: rec.reason, events: rec.events })
+  res.status(200).json({ ok: rec.outcome !== 'REJECTED', outcome: rec.outcome, reason: rec.reason, events: rec.events, mode: gate.enabled ? 'live-demo' : 'stub' })
 }
