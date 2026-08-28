@@ -154,4 +154,27 @@ describe('advanceSim', () => {
     expect(out.state.open?.grade).toBe('A')
     expect(out.lastProcessedTime).toBe(4)
   })
+
+  it('guards a throwing signalFn: no open on that candle, but settle + watermark still advance', () => {
+    const config = defaultConfig
+    const simConfig = simConfigFrom(config)
+    const bar5 = (t: number, high: number, low: number): Candle => ({ time: t, open: 100, high, low, close: 100 })
+    const ctx: MarketContext = {
+      // t=2 opens; t=3 throws (no new open) yet its high 103 hits TP 102 → the open settles as a win.
+      m5: [bar5(1, 100.5, 99.5), bar5(2, 100.5, 99.5), bar5(3, 103, 99.5), bar5(4, 100.5, 99.5)],
+      m15: [bar5(1, 100.5, 99.5)],
+      h1: [bar5(1, 100.5, 99.5)],
+    }
+    const openSig = { authorized: true, direction: 'long', entry: 100, sl: 99, tp: 102 } as const
+    const signalFn = (_c: MarketContext, t: number) => {
+      if (t === 2) return openSig
+      if (t === 3) throw new Error('evaluation blew up on this candle')
+      return { authorized: false } as const
+    }
+    const out = advanceSim(initialSimState(simConfig), 1, ctx, config, signalFn)
+    expect(out.state.trades).toHaveLength(1) // opened at t=2, settled at t=3 despite the throw
+    expect(out.state.trades[0]?.exitReason).toBe('tp')
+    expect(out.state.open).toBeNull()
+    expect(out.lastProcessedTime).toBe(4) // watermark advanced past the throwing candle
+  })
 })
