@@ -33,11 +33,12 @@ Paste below everything else. **Do not** add a second `//@version` line — keep 
 
 ```pine
 // ── Northmark webhook alerts — notification only; does NOT change the strategy ──
+// SL/TP are taken from YOUR strategy's own tradeRisk & tradeRR (Adaptive R:R preserved).
+// Northmark never recomputes them. Assumes V2.7.1 exposes script-level `tradeRisk` and
+// `tradeRR` (as in your saved script). If yours are named differently, change only those
+// two names below to match.
 nmSecret = "<<WEBHOOK_SECRET>>"   // paste the Vercel WEBHOOK_SECRET here before use
 nmLot    = "0.01"                 // broker lots per order (demo forward-test size)
-nmAtr    = ta.atr(14)             // ATR length 14 (V2.7.1)
-nmMult   = 1.5                    // ATR stop multiplier (V2.7.1)
-nmRR     = 1.2                    // reward:risk (V2.7.1 forward-test)
 
 nmJustLong  = strategy.position_size > 0  and strategy.position_size[1] <= 0
 nmJustShort = strategy.position_size < 0  and strategy.position_size[1] >= 0
@@ -53,18 +54,18 @@ nmMsg(a, mp, e, sl, tp) =>
 
 if nmJustLong
     e = strategy.position_avg_price
-    r = nmAtr * nmMult
-    alert(nmMsg("buy",  "long",  e, e - r, e + r * nmRR), alert.freq_once_per_bar_close)
+    // exact strategy levels: SL = entry − tradeRisk, TP = entry + tradeRisk × tradeRR
+    alert(nmMsg("buy",  "long",  e, e - tradeRisk, e + tradeRisk * tradeRR), alert.freq_once_per_bar_close)
 if nmJustShort
     e = strategy.position_avg_price
-    r = nmAtr * nmMult
-    alert(nmMsg("sell", "short", e, e + r, e - r * nmRR), alert.freq_once_per_bar_close)
+    alert(nmMsg("sell", "short", e, e + tradeRisk, e - tradeRisk * tradeRR), alert.freq_once_per_bar_close)
 if nmJustFlat
+    // EXIT: prices are placeholders — Northmark treats market_position=flat as CLOSE and ignores them
     wasLong = strategy.position_size[1] > 0
     alert(nmMsg(wasLong ? "sell" : "buy", "flat", close, close, close), alert.freq_once_per_bar_close)
 ```
 
-**If your V2.7.1 uses different numbers**, change only the three lines `nmAtr = ta.atr(14)`, `nmMult = 1.5`, `nmRR = 1.2` to match your script.
+**SL/TP come from your strategy, not from Northmark.** The block reads V2.7.1's own `tradeRisk` and `tradeRR`, so the levels sent are exactly what the strategy computes — **Adaptive R:R preserved**, no hardcoded 1:1.2. If your script names those variables differently, change only the two names.
 
 ### Step 3 — Save & add to chart
 **Save** → **Add to chart**. It must compile with no red errors (it's `//@version=6`, same as your strategy).
@@ -135,12 +136,16 @@ One explicit, validated schema. Any missing/invalid field is **rejected with the
 | `market_position` | `long` / `short` / `flat` (new state) | strategy state |
 | `prev_market_position` | previous state (enables reversal detection) | `nmPrev()` |
 | `entry` | entry price | `strategy.position_avg_price` |
-| `sl` | stop loss | long `e − ATR×1.5`, short `e + ATR×1.5` |
-| `tp` | take profit | long `e + ATR×1.5×1.2`, short `e − ATR×1.5×1.2` |
+| `sl` | stop loss — **your strategy's value** | long `e − tradeRisk`, short `e + tradeRisk` |
+| `tp` | take profit — **your strategy's value** | long `e + tradeRisk × tradeRR`, short `e − tradeRisk × tradeRR` |
 | `lot` | broker lots | `"0.01"` |
+
+> `tradeRisk` and `tradeRR` are the strategy's **own** variables — so SL/TP carry its ATR risk and **Adaptive R:R** exactly. On a `flat` (EXIT) event these fields are placeholders and Northmark ignores them (see below).
 
 ## 4. Execution behavior (built + tested)
 
+- **Executes TradingView's levels verbatim — no reconstruction.** Northmark places the exact `entry/sl/tp` the payload carries. It only *validates* them (SL/TP must be on the correct side of entry — long `sl < entry < tp`, short `tp < entry < sl`); a value that fails is **rejected**, never adjusted. Northmark never recomputes SL, TP, or R:R.
+- **EXIT / flat = CLOSE.** Events are classified by the position transition (`prev → new`), not by prices. `market_position = flat` → close the tracked position; the placeholder entry/sl/tp on an exit are **never** read as new trade levels. `long → short` / `short → long` → EXIT then ENTRY.
 - **Symbol mapping:** `XAUUSD → XAUUSDm` (configurable via `EXEC_BROKER_SYMBOL`).
 - **Lot validation + hard cap:** lot must be a finite number `> 0` **and ≤ the hard cap** (`EXEC_MAX_LOT`, default **0.10**). Anything above the cap is rejected `LOT` — a bad payload can never size a large order. (Intended size is 0.01.)
 - **BUY / SELL / EXIT / reversal:** LONG_ENTRY, SHORT_ENTRY, LONG_EXIT, SHORT_EXIT are distinct events. A reversal (long→short or short→long) is handled as **EXIT then ENTRY**. No pyramiding — never stacks a second position.

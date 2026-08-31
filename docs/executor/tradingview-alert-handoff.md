@@ -12,11 +12,12 @@ Scroll to the end of your code and paste this **below everything** (do **not** a
 
 ```pine
 // ── Northmark webhook alerts — notification only; does NOT change the strategy ──
+// SL/TP come from YOUR strategy's own tradeRisk & tradeRR (adaptive R:R preserved) —
+// Northmark does not recompute them. Assumes V2.7.1 declares script-level `tradeRisk`
+// and `tradeRR` (as in your saved script). If yours are named differently, change only
+// the two names below to match.
 nmSecret = "<<WEBHOOK_SECRET>>"   // replace with the Vercel WEBHOOK_SECRET before use
-nmLot    = "0.01"
-nmAtr    = ta.atr(14)              // ATR length 14 (V2.7.1)
-nmMult   = 1.5                     // ATR stop multiplier (V2.7.1)
-nmRR     = 1.2                     // reward:risk (V2.7.1 forward-test)
+nmLot    = "0.01"                 // broker lots per order (demo forward-test size)
 
 nmJustLong  = strategy.position_size > 0  and strategy.position_size[1] <= 0
 nmJustShort = strategy.position_size < 0  and strategy.position_size[1] >= 0
@@ -32,13 +33,13 @@ nmMsg(a, mp, e, sl, tp) =>
 
 if nmJustLong
     e = strategy.position_avg_price
-    r = nmAtr * nmMult
-    alert(nmMsg("buy",  "long",  e, e - r, e + r * nmRR), alert.freq_once_per_bar_close)
+    // exact strategy levels: SL = entry − tradeRisk, TP = entry + tradeRisk × tradeRR
+    alert(nmMsg("buy",  "long",  e, e - tradeRisk, e + tradeRisk * tradeRR), alert.freq_once_per_bar_close)
 if nmJustShort
     e = strategy.position_avg_price
-    r = nmAtr * nmMult
-    alert(nmMsg("sell", "short", e, e + r, e - r * nmRR), alert.freq_once_per_bar_close)
+    alert(nmMsg("sell", "short", e, e + tradeRisk, e - tradeRisk * tradeRR), alert.freq_once_per_bar_close)
 if nmJustFlat
+    // EXIT: prices are placeholders — Northmark treats market_position=flat as CLOSE and ignores them
     wasLong = strategy.position_size[1] > 0
     alert(nmMsg(wasLong ? "sell" : "buy", "flat", close, close, close), alert.freq_once_per_bar_close)
 ```
@@ -63,4 +64,6 @@ Click **Save**, then **Add to chart**. If it compiles with no red errors, you're
 ### Notes
 - **Safe:** these `alert()` calls only *announce* your trades — they place no orders and can't change your strategy's behavior or backtest.
 - The bot is in **test mode** — it just logs what it *would* trade; it places **no real orders**.
-- The block assumes ATR length **14**, stop multiplier **1.5**, reward:risk **1.2** (V2.7.1 forward-test values). If your script uses different numbers, change only these three lines: `nmAtr = ta.atr(14)`, `nmMult = 1.5`, `nmRR = 1.2`.
+- **SL/TP are your strategy's own values.** The block sends `entry − tradeRisk` / `entry + tradeRisk × tradeRR` — the exact initial levels V2.7.1 computes from its ATR risk and **Adaptive R:R**. Northmark does **not** recompute or hardcode any R:R. This requires that your script exposes `tradeRisk` and `tradeRR` as script-level variables (they are in the V2.7.1 code you shared). If your adaptive function names them differently, change only those two names in the block.
+- **Profit protection is honored via the exit, not the level.** If your strategy moves the SL (profit lock) and exits early, that exit fires a `flat` event and Northmark closes the demo position — so the *realized* exit matches TradingView. The SL/TP placed on the order are a protective backstop only.
+- **EXIT events:** on a `flat` event the entry/sl/tp are placeholders; Northmark treats `market_position=flat` as a **close** and never reads those numbers as new trade levels.
