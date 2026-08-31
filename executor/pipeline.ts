@@ -86,7 +86,9 @@ export async function handleSignal(rawBody: string, deps: Deps): Promise<Accepta
         outcome = await executor.openPosition(order, eventId)
         try { await store.appendBroker({ eventId, event: ev.type, order, outcome, status: outcome.status, at: now }) } catch { /* best-effort */ }
       } else {
-        outcome = await executor.closePosition(ev.direction, eventId)
+        // sig.entry carries the exit price: on a flat event it's the bar close; on a reversal it's
+        // the flip price. Paper mode uses it to price the close; broker executors close at market.
+        outcome = await executor.closePosition(ev.direction, eventId, sig.entry)
         try { await store.appendBroker({ eventId, event: ev.type, direction: ev.direction, outcome, status: outcome.status, at: now }) } catch { /* best-effort */ }
       }
       if (outcome.status === 'error') {

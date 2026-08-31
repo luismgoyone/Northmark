@@ -6,6 +6,7 @@ import { evaluateSetup, type SetupVerdict } from './scoring/evaluateSetup'
 import { evaluateSetupClaude } from './scoring/evaluateSetupClaude'
 import { useMarketData } from './hooks/useMarketData'
 import { useServerSim } from './hooks/useServerSim'
+import { useExecutorPaper } from './hooks/useExecutorPaper'
 import { DEMO_PRESETS, type Mode } from './demo/presets'
 import { PriceTicker } from './ui/PriceTicker'
 import { Score } from './ui/Score'
@@ -22,11 +23,12 @@ import { ClaudeSignal } from './ui/edge/ClaudeSignal'
 import { ClaudeChecklist } from './ui/edge/ClaudeChecklist'
 import { GradeAnalytics } from './ui/edge/GradeAnalytics'
 
-type TabKey = 'signal' | 'chart' | 'paper' | 'checklist'
+type TabKey = 'signal' | 'chart' | 'paper' | 'tradingview' | 'checklist'
 const TABS: TabDef[] = [
   { key: 'signal', label: 'Signal' },
   { key: 'chart', label: 'Chart' },
   { key: 'paper', label: 'Paper' },
+  { key: 'tradingview', label: 'TradingView' },
   { key: 'checklist', label: 'Checklist' },
 ]
 
@@ -174,6 +176,7 @@ export default function App(): ReactElement {
   // The Claude engine runs on the same candle: last M5 close is `now`, empty events in Phase 1.
   const now = activeCtx?.m5[activeCtx.m5.length - 1]?.time ?? 0
   const sim = useServerSim()
+  const tvPaper = useExecutorPaper()
   const claudeVerdict = activeCtx ? evaluateSetupClaude(activeCtx, activeConfig, now, sim.news) : null
 
   if (mode === 'live' && !activeCtx) {
@@ -317,6 +320,19 @@ export default function App(): ReactElement {
                 to view it.
               </div>
             ))}
+
+          {tab === 'tradingview' && (
+            <div className="grid grid-cols-1 items-start gap-4">
+              <StrategySection engine="dad" subtitle="V2.7.1 · live from TradingView">
+                <SimPanel state={tvPaper.state} stats={tvPaper.stats} meta={tvPaper.meta} />
+                <p className="mt-3 px-1 text-[11.5px] text-ink-3">
+                  Paper record of your dad's real V2.7.1 signals — no broker, no cost. It fills in as
+                  the strategy trades; exits price at the signal's close (a close approximation of the
+                  strategy's SL/TP/profit-lock exit).
+                </p>
+              </StrategySection>
+            </div>
+          )}
 
           {tab === 'checklist' && (
             <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">

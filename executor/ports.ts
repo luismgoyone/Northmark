@@ -1,11 +1,12 @@
 // executor/ports.ts
-import type { BrokerOrder, PositionState } from './types.js'
+import type { BrokerOrder, PaperAccount, PositionState } from './types.js'
 
-export type ExecOutcome = { status: 'stub' | 'sent' | 'error'; detail: string; ticket?: string; fill?: number }
+export type ExecOutcome = { status: 'stub' | 'sent' | 'error' | 'paper'; detail: string; ticket?: string; fill?: number }
 
 export interface Executor {
   openPosition(order: BrokerOrder, eventId: string): Promise<ExecOutcome>
-  closePosition(direction: 'long' | 'short', eventId: string): Promise<ExecOutcome>
+  // exitPrice is the price to close at (paper mode uses it; broker executors close at market and ignore it).
+  closePosition(direction: 'long' | 'short', eventId: string, exitPrice?: number): Promise<ExecOutcome>
 }
 
 export type AcceptanceRecord = {
@@ -22,4 +23,6 @@ export interface Store {
   setState(s: PositionState): Promise<void>
   seen(eventId: string): Promise<boolean>   // true if already processed; records it if not
   recent(kind: 'raw' | 'acceptance' | 'broker' | 'reconcile', n: number): Promise<unknown[]>
+  getPaper(): Promise<PaperAccount>          // paper ledger (empty account when unset)
+  setPaper(account: PaperAccount): Promise<void>
 }
