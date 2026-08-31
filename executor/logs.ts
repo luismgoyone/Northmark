@@ -1,11 +1,12 @@
 // executor/logs.ts
 import type { Redis } from '@upstash/redis'
-import type { PositionState } from './types.js'
+import type { PaperAccount, PositionState } from './types.js'
 import type { AcceptanceRecord, Store } from './ports.js'
+import { emptyAccount } from './paper.js'
 
 const K = {
   raw: 'exec:raw', acceptance: 'exec:acceptance', broker: 'exec:broker', reconcile: 'exec:reconcile',
-  state: 'exec:position', seen: (id: string) => `exec:seen:${id}`,
+  state: 'exec:position', seen: (id: string) => `exec:seen:${id}`, paper: 'exec:paper:v1',
 }
 const CAP = 500
 const SEEN_TTL = 60 * 60 * 24 // 24h
@@ -32,5 +33,11 @@ export function redisStore(redis: Redis): Store {
       const arr = await redis.lrange(K[kind], 0, n - 1)
       return arr.map((x) => (typeof x === 'string' ? JSON.parse(x) : x))
     },
+    getPaper: async () => {
+      const raw = await redis.get<PaperAccount | string>(K.paper)
+      if (raw == null) return emptyAccount()
+      return typeof raw === 'string' ? (JSON.parse(raw) as PaperAccount) : raw
+    },
+    setPaper: async (account) => { await redis.set(K.paper, JSON.stringify(account)) },
   }
 }

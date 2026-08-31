@@ -3,16 +3,19 @@ import { describe, expect, it } from 'vitest'
 import { handleSignal } from './pipeline'
 import { StubExecutor } from './executor'
 import type { Store, AcceptanceRecord } from './ports'
-import type { PositionState } from './types'
+import type { PaperAccount, PositionState } from './types'
+import { emptyAccount } from './paper'
 
 function memStore(): Store & { accepts: AcceptanceRecord[] } {
   let state: PositionState = 'FLAT'; const seen = new Set<string>(); const accepts: AcceptanceRecord[] = []
+  let paper: PaperAccount = emptyAccount()
   return {
     accepts,
     appendRaw: async (_body: string, _at: number) => {}, appendBroker: async () => {}, appendReconcile: async () => {}, recent: async () => [],
     appendAcceptance: async (r) => { accepts.push(r) },
     getState: async () => state, setState: async (s) => { state = s },
     seen: async (id) => { if (seen.has(id)) return true; seen.add(id); return false },
+    getPaper: async () => paper, setPaper: async (a) => { paper = a },
   }
 }
 const body = (o: object) => JSON.stringify({ secret: 'S', timestamp: 't', symbol: 'XAUUSD', ...o })
