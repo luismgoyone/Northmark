@@ -45,6 +45,7 @@ Do this ONLY when you want real demo fills. Cost: MetaApi ≈ **$0.0126/hr (~$9/
    - `METAAPI_TOKEN = <<metaapi token>>`
    - `METAAPI_ACCOUNT_ID = <<metaapi account id>>`
    - `EXEC_BROKER_SYMBOL = <<XAUUSD or XAUUSDm or GOLD>>` (whatever your broker calls gold)
+   - `EXEC_MAX_LOT = <<optional>>` — hard ceiling on order size in lots. **Default `0.10`** if unset. Any order above it is rejected `LOT`, so a bad payload can't size a large position (intended size is `0.01`).
    - **Leave `EXEC_ALLOW_LIVE` unset** — demo only. The bot refuses a non-demo account by default.
 4. **Redeploy prod.** The webhook now routes through `MetaApiExecutor` (mode `live-demo`) instead of the stub.
 5. **Confirm safe:** the bot won't place an order unless `EXEC_ENABLED=true` AND creds are set AND the connected account's server looks like a demo.
