@@ -1,5 +1,5 @@
 // src/ui/SimPanel.test.tsx
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { SimPanel } from './SimPanel'
 import { fmtPhtDateTime } from './format'
 import { simStats } from '../sim/stats'
@@ -37,6 +37,38 @@ test('a trade row shows entry, SL, TP, exit, R, USD P&L, lot, risk $, and open�
   expect(screen.getByText(/lot 0.20 · risk \$100.00/)).toBeInTheDocument() // lot + amount risked
   expect(screen.getByText(/opened 23 Aug.*→ closed 23 Aug.*PHT/)).toBeInTheDocument() // open + close window
   expect(screen.getByText('win')).toBeInTheDocument() // sr-only status label
+})
+
+test('paginates the full trade history (8/page, newest-first) with working Prev/Next', () => {
+  // 20 trades: id t0..t19 with entry 4000..4019; newest (t19) shows first.
+  const trades = Array.from({ length: 20 }, (_, i) => ({ ...winTrade, id: `t${i}`, entry: 4000 + i }))
+  const state: SimState = { ...empty, balance: 200, trades }
+  render(<SimPanel state={state} stats={simStats(state)} meta={NO_META} />)
+
+  // Page 1: newest 8 (entries 4,019 … 4,012). Prev disabled; page label present.
+  expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument()
+  expect(screen.getByText(/trades 1–8 of 20/)).toBeInTheDocument()
+  expect(screen.getByText(/4,019\.00/)).toBeInTheDocument() // newest
+  expect(screen.queryByText(/4,000\.00/)).not.toBeInTheDocument() // oldest not on page 1
+  const prev = screen.getByRole('button', { name: /prev/i })
+  const next = screen.getByRole('button', { name: /next/i })
+  expect(prev).toBeDisabled()
+  expect(next).toBeEnabled()
+
+  // Jump to the last page → oldest trade (4,000) visible, Next disabled.
+  fireEvent.click(next)
+  fireEvent.click(next)
+  expect(screen.getByText(/Page 3 of 3/)).toBeInTheDocument()
+  expect(screen.getByText(/trades 17–20 of 20/)).toBeInTheDocument()
+  expect(screen.getByText(/4,000\.00/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /next/i })).toBeDisabled()
+})
+
+test('shows no pagination controls when there is only one page', () => {
+  const state: SimState = { ...empty, balance: 204, trades: [winTrade] }
+  render(<SimPanel state={state} stats={simStats(state)} meta={NO_META} />)
+  expect(screen.queryByRole('button', { name: /prev/i })).not.toBeInTheDocument()
+  expect(screen.queryByText(/Page 1 of/)).not.toBeInTheDocument()
 })
 
 test('shows the data-limit note when the limit is newer than the last update', () => {

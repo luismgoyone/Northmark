@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import type { SimState } from '../sim/types'
 import type { SimStats } from '../sim/stats'
 import type { SimMeta } from '../hooks/useServerSim'
@@ -46,6 +46,14 @@ export function SimPanel({
   const up = stats.pnlCredits >= 0
   const rSign = stats.avgR >= 0 ? '+' : '−'
   const showLimit = meta.limitReachedAt !== null && meta.limitReachedAt > (meta.updatedAt ?? 0)
+  // Paginate the full trade history newest-first (8/page) so every trade is reachable, not just the latest.
+  const PAGE_SIZE = 8
+  const [page, setPage] = useState(0)
+  const ordered = [...state.trades].reverse()
+  const pageCount = Math.max(1, Math.ceil(ordered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1) // clamp if the count shrank (e.g. a reset)
+  const start = safePage * PAGE_SIZE
+  const shown = ordered.slice(start, start + PAGE_SIZE)
   return (
     <section className="mt-4 rounded-panel border border-border bg-surface shadow-panel" aria-label="Paper trading">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border px-[18px] py-[15px] pb-3">
@@ -109,10 +117,8 @@ export function SimPanel({
             automatically.
           </p>
         ) : (
-          [...state.trades]
-            .slice(-8)
-            .reverse()
-            .map((t) => (
+          <>
+            {shown.map((t) => (
               <div key={t.id} className="border-b border-border px-1.5 py-2.5 last:border-b-0">
                 <div className="flex items-center gap-2.5">
                   <StatusIcon status={t.result === 'win' ? 'pass' : 'fail'} size={20} />
@@ -145,7 +151,34 @@ export function SimPanel({
                   </span>
                 </div>
               </div>
-            ))
+            ))}
+            {pageCount > 1 && (
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-2 px-1.5 pt-3 text-[11.5px] text-ink-3">
+                <span className="tabular-nums">
+                  Page {safePage + 1} of {pageCount} · trades {start + 1}–{Math.min(start + PAGE_SIZE, ordered.length)} of{' '}
+                  {ordered.length}
+                </span>
+                <span className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPage(Math.max(0, safePage - 1))}
+                    disabled={safePage === 0}
+                    className="rounded-[6px] border border-border px-2.5 py-1 font-semibold text-ink-2 transition-colors enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    ‹ Prev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+                    disabled={safePage >= pageCount - 1}
+                    className="rounded-[6px] border border-border px-2.5 py-1 font-semibold text-ink-2 transition-colors enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next ›
+                  </button>
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>
