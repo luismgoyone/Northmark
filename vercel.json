@@ -1,4 +1,4 @@
 {
-  "git": { "deploymentEnabled": { "develop": false } },
+  "git": { "deploymentEnabled": { "main": false } },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }

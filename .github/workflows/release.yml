@@ -1,6 +1,6 @@
 # .github/workflows/release.yml
 # Deploys production when a GitHub Release is published. Auto-deploys on the
-# develop branch are disabled in vercel.json, so this is the sole path to prod.
+# main branch are disabled in vercel.json, so this is the sole path to prod.
 # Publish a release (which creates its tag) from the GitHub Releases UI or:
 #   gh release create v1.2.3 --title v1.2.3 --notes "..."
 # workflow_dispatch is kept for manual re-deploys / debugging.
