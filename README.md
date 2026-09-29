@@ -117,7 +117,7 @@ Production-only environment variables, all set in Vercel and never committed:
 
 ## Deployment
 
-Live at **https://northmark-one.vercel.app/**. Pushes to `develop` do **not** deploy. To ship
+Live at **https://northmark-one.vercel.app/**. Pushes to `main` do **not** deploy. To ship
 to production, publish a GitHub Release (`gh release create vX.Y.Z`), which triggers
 `.github/workflows/release.yml`.
 
